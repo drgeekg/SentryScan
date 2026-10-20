@@ -1,0 +1,533 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>SentryScan Specification</title>
+  <style>
+    @page {
+      size: A4;
+      margin: 18mm 16mm 18mm 16mm;
+      @bottom-right {
+        content: counter(page);
+      }
+    }
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+      font-size: 11pt;
+      line-height: 1.5;
+      color: #1e293b;
+      margin: 0;
+      padding: 0;
+    }
+    h1 {
+      font-size: 20pt;
+      color: #0f172a;
+      border-bottom: 2px solid #2563eb;
+      padding-bottom: 6px;
+      margin-top: 0;
+      margin-bottom: 12px;
+    }
+    h2 {
+      font-size: 14pt;
+      color: #1e40af;
+      border-bottom: 1px solid #cbd5e1;
+      padding-bottom: 4px;
+      margin-top: 24px;
+      margin-bottom: 10px;
+      page-break-after: avoid;
+    }
+    h3 {
+      font-size: 12pt;
+      color: #334155;
+      margin-top: 16px;
+      margin-bottom: 8px;
+      page-break-after: avoid;
+    }
+    p, ul, ol {
+      margin-top: 0;
+      margin-bottom: 10px;
+    }
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      margin: 14px 0;
+      font-size: 9.5pt;
+      page-break-inside: avoid;
+    }
+    th, td {
+      border: 1px solid #cbd5e1;
+      padding: 7px 10px;
+      text-align: left;
+      vertical-align: top;
+    }
+    th {
+      background-color: #f1f5f9;
+      font-weight: 600;
+      color: #0f172a;
+    }
+    tr:nth-child(even) {
+      background-color: #f8fafc;
+    }
+    pre, code {
+      font-family: "SFMono-Regular", Consolas, "Liberation Mono", Menlo, monospace;
+      font-size: 9pt;
+      background-color: #f1f5f9;
+      border-radius: 4px;
+    }
+    pre {
+      padding: 10px;
+      border: 1px solid #e2e8f0;
+      overflow-x: auto;
+      page-break-inside: avoid;
+    }
+    code {
+      padding: 2px 4px;
+    }
+    pre code {
+      padding: 0;
+      background: none;
+    }
+    .diagram-container {
+      text-align: center;
+      margin: 18px 0;
+      page-break-inside: avoid;
+    }
+    .diagram-container svg {
+      max-width: 100%;
+      height: auto;
+      border: 1px solid #e2e8f0;
+      border-radius: 6px;
+      background: #ffffff;
+      box-shadow: 0 1px 3px rgba(0,0,0,0.05);
+    }
+    hr {
+      border: none;
+      border-top: 1px solid #e2e8f0;
+      margin: 20px 0;
+    }
+  </style>
+</head>
+<body>
+<h1 id="sentryscan-agent-architecture-environment-specification">SentryScan: Agent Architecture &amp; Environment Specification</h1>
+<p><strong>Course:</strong> 21CSE525T — Agent Technology<br />
+<strong>Assignment:</strong> 1.1 — PEAS &amp; Environment Modelling<br />
+<strong>Student:</strong> R Ganesh [RA2212704010031]<br />
+<strong>Repository:</strong> https://github.com/drgeekg/SentryScan<br />
+<strong>Status:</strong> Submitted<br />
+<strong>Git Tag:</strong> <code>assignment-1.1</code>  </p>
+<hr />
+<h2 id="1-persona-problem-statement">1. Persona &amp; Problem Statement</h2>
+<h3 id="11-problem-statement">1.1 Problem Statement</h3>
+<p>Modern enterprise infrastructure produces massive volumes of security telemetry—service banners, port states, TLS handshakes, and access logs across thousands of endpoints. Security operations centers (SOCs) face two chronic bottlenecks:
+1. <strong>Alert Fatigue &amp; Noisy Prioritization:</strong> Uncorrelated alerts overwhelm human operators; high-severity critical exposures get buried under thousands of low-impact notices.
+2. <strong>Operational Disruption of Live Probing:</strong> Active vulnerability probing (e.g., intrusive scanning, fuzzing, packet flooding) risks taking down delicate operational technology (OT) or violating legal and organizational compliance boundaries.</p>
+<p>There is an acute need for an <strong>autonomous, non-intrusive security analysis agent</strong> capable of ingesting streaming endpoint telemetry, validating data integrity, detecting high-risk exposures through deterministic reasoning, and deliberating over threat posture without active live scanning.</p>
+<h3 id="12-agent-persona-sentryscan">1.2 Agent Persona: SentryScan</h3>
+<p><strong>SentryScan</strong> is an authorized, defensive security analyst agent designed to simulate intelligent vulnerability triage. </p>
+<ul>
+<li><strong>Role:</strong> Autonomous Defensive Telemetry Analyst.</li>
+<li><strong>Core Philosophy:</strong> SentryScan operates strictly on <em>perceived telemetry</em> rather than active exploitation. It acts as an observant, rule-grounded, and deliberative defender.</li>
+<li><strong>Operational Scope:</strong></li>
+<li>Ingests structured synthetic telemetry records representing network services and host metadata.</li>
+<li>Distinguishes authentic telemetry from poisoned or corrupted records without access to ground-truth answer keys.</li>
+<li>Applies explicit condition–action rules to identify confirmed exposures (e.g., deprecated protocols, default credentials, exposed administrative interfaces).</li>
+<li>Prioritizes remediation based on explicit multi-attribute utility and updates internal mental states (BDI) as threat context evolves.</li>
+</ul>
+<h3 id="13-safety-boundary-ethical-simulation-mandate">1.3 Safety Boundary &amp; Ethical Simulation Mandate</h3>
+<p>To maintain strict ethical boundaries and academic reproducibility:
+- <strong>Synthetic Simulation Only:</strong> SentryScan does <strong>not</strong> perform network-level packet craft, port scanning, credential stuffing, or exploit execution.
+- <strong>Documentation Address Space:</strong> All host addresses strictly use IETF documentation ranges (RFC 5737: <code>192.0.2.0/24</code>, <code>198.51.100.0/24</code>, <code>203.0.113.0/24</code>; RFC 3849: <code>2001:db8::/32</code>). SentryScan never attempts socket connections to these addresses.
+- <strong>Untrusted Telemetry Guarantee:</strong> All banners and external strings are treated as untrusted data inputs, precluding prompt-injection side channels or unvalidated execution.</p>
+<hr />
+<h2 id="2-peas-framework-formulation">2. PEAS Framework Formulation</h2>
+<p>The formal PEAS (Performance, Environment, Actuators, Sensors) specification for SentryScan defines its operational boundaries and rational agency:</p>
+<table>
+<thead>
+<tr>
+<th>Component</th>
+<th>Specification for SentryScan</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><strong>Performance Measure ($P$)</strong></td>
+<td>- <strong>Detection Accuracy:</strong> High precision and recall on genuine exposures without false alarms on benign services.<br>- <strong>Data Integrity Defense:</strong> Detection rate of poisoned/mutated records (stale timestamps, banner contradictions, rate bursts) without access to ground truth.<br>- <strong>System Stability &amp; Latency:</strong> Minimal queue turnaround time; bounded memory footprint; zero dropped events.<br>- <strong>Protocol Compliance:</strong> Handshake resolution rate in multi-agent negotiation; bounded rounds ($\le 5$); zero unauthorized message acceptances.<br>- <strong>Audit Completeness:</strong> 100% gap-free event sequence persistence (<code>seq</code>).</td>
+</tr>
+<tr>
+<td><strong>Environment ($E$)</strong></td>
+<td>- <strong>Simulated Endpoint Fleet:</strong> Heterogeneous synthetic hosts (<code>sim-host-001</code> … <code>sim-host-N</code>) generating concurrent telemetry.<br>- <strong>Telemetry Stream:</strong> Ingestion queue carrying normal baseline records, malformed payloads, and deliberately mutated (poisoned) records.<br>- <strong>Communication Channels:</strong> Loopback TCP sockets (<code>127.0.0.1</code>) and in-process message queues.<br>- <strong>Knowledge Repositories:</strong> Read-only CVE / NVD data interfaces and local offline caches.</td>
+</tr>
+<tr>
+<td><strong>Actuators ($A$)</strong></td>
+<td>- <strong>Finding Publisher:</strong> Emits structured <code>Finding</code> objects with deterministic severity, evidence links, and confidence scores.<br>- <strong>Event Recorder:</strong> Commits append-only chronological <code>AgentEvent</code> entries with monotonic <code>seq</code> to JSONL and SQLite sinks.<br>- <strong>Envelope Dispatcher:</strong> Constructs, signs (Ed25519), and transmits inter-agent messages (<code>ALERT</code>, <code>PARAMS_UPDATE</code>, <code>CFP</code>, <code>PROPOSE</code>, <code>ACCEPT</code>).<br>- <strong>BDI Intention Actuator:</strong> Modifies active goals, triggering plan revision or resource reallocation.<br>- <strong>Report Actuator:</strong> Generates structured JSON/CSV audit reports and Rich console dashboards.</td>
+</tr>
+<tr>
+<td><strong>Sensors ($S$)</strong></td>
+<td>- <strong>Telemetry Sensor:</strong> Stream receiver that parses and validates raw telemetry into typed <code>TelemetryRecord</code> objects.<br>- <strong>Integrity Sensor:</strong> Rule-based parser checking timestamp drift, hash duplication, service-banner mismatch, and prompt injection strings.<br>- <strong>Socket / Network Sensor:</strong> TCP frame listener decoding length-prefixed JSON envelopes and validating security credentials.<br>- <strong>Knowledge Sensor:</strong> Client querying local CVE cache and external NVD endpoints for vulnerability enrichment.</td>
+</tr>
+</tbody>
+</table>
+<hr />
+<h2 id="3-environment-classification-russell-norvig-taxonomy">3. Environment Classification (Russell &amp; Norvig Taxonomy)</h2>
+<p>SentryScan's operational environment is categorized along the seven classical dimensions established by Russell &amp; Norvig (<em>Artificial Intelligence: A Modern Approach</em>):</p>
+<table>
+<thead>
+<tr>
+<th>Dimension</th>
+<th>Classification</th>
+<th>Theoretical Justification &amp; SentryScan Grounding</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><strong>Observability</strong></td>
+<td><strong>Partially Observable</strong></td>
+<td>The agent observes only surface-level telemetry emitted by devices (ports, service names, version banners). It cannot inspect remote filesystem states, kernel memory, or underlying device internals. Furthermore, ground-truth poisoning labels are held in an evaluator-only store, preventing the agent from directly observing whether a record has been tampered with.</td>
+</tr>
+<tr>
+<td><strong>Determinism</strong></td>
+<td><strong>Stochastic</strong></td>
+<td>Although SentryScan's internal reasoning engine is strictly deterministic (same seed produces identical rule firings), the external telemetry environment contains stochastic elements: variable queue latency, concurrent thread interleaving, synthetic network jitter, and probabilistic injection operators applied by the fleet generator.</td>
+</tr>
+<tr>
+<td><strong>Episodic vs. Sequential</strong></td>
+<td><strong>Sequential</strong></td>
+<td>SentryScan is fundamentally sequential. Current perceptual decisions directly constrain future states: identifying a suspect record updates the device baseline; creating a finding alters the BDI belief store; and awarding an analysis batch changes the budget available for subsequent negotiation rounds.</td>
+</tr>
+<tr>
+<td><strong>Static vs. Dynamic</strong></td>
+<td><strong>Dynamic</strong></td>
+<td>The environment evolves continuously while the agent deliberates. The background fleet daemon continues to generate telemetry, populate queues, and update device profiles while scanner workers process historical batches. The agent cannot assume the environment remains frozen during decision computation.</td>
+</tr>
+<tr>
+<td><strong>Discrete vs. Continuous</strong></td>
+<td><strong>Discrete</strong></td>
+<td>Percepts, state variables, and actions are discrete. Network ports are integers ($1 \dots 65535$), performatives belong to a finite enumeration (<code>ALERT</code>, <code>CFP</code>, <code>PROPOSE</code>, etc.), vulnerability severities are categorical (<code>LOW</code>, <code>MEDIUM</code>, <code>HIGH</code>, <code>CRITICAL</code>), and event sequences follow discrete monotonic steps ($seq \in \mathbb{N}$).</td>
+</tr>
+<tr>
+<td><strong>Single-Agent vs. Multi-Agent</strong></td>
+<td><strong>Multi-Agent</strong></td>
+<td>SentryScan operates as a multi-agent system from Unit 3 onwards. The supervisor coordinates multiple specialized agents (Scout, Triage, Scanner Workers, and Analyst) with partially conflicting utility functions (Scout seeks breadth of host coverage; Triage seeks depth of critical risk). They engage in Contract-Net negotiation to achieve task allocation.</td>
+</tr>
+<tr>
+<td><strong>Known vs. Unknown</strong></td>
+<td><strong>Known</strong></td>
+<td>The structural laws of the environment—telemetry schemas, rule definitions, network protocols, and utility equations—are completely specified and known to the agent design. The state of individual devices, however, must be discovered through telemetry sensing.</td>
+</tr>
+</tbody>
+</table>
+<hr />
+<h2 id="4-agent-architecture-vs-conventional-object-oriented-programming-oop">4. Agent Architecture vs. Conventional Object-Oriented Programming (OOP)</h2>
+<p>A fundamental theoretical pillar of Unit 1 (Agent Technology) is distinguishing autonomous agent architectures from conventional Object-Oriented Programming paradigms (Russell &amp; Norvig, Chapter 2; Wooldridge, <em>An Introduction to MultiAgent Systems</em>).</p>
+<pre><code class="language-text">+------------------------------------+---------------------------------------+
+| Conventional OOP Paradigm          | Autonomous Agent Paradigm (SentryScan) |
++------------------------------------+---------------------------------------+
+| Invocation: Passive method dispatch| Interaction: Autonomous reaction &amp;    |
+| (caller forces execution)          | deliberate acceptance of messages     |
+|                                    |                                       |
+| State: Internal variables &amp;        | State: Cognitive mental models        |
+| encapsulated data structures       | (Beliefs, Desires, Intentions)        |
+|                                    |                                       |
+| Environment: Abstracted away;      | Environment: Continuously sensed,     |
+| closed-world heap execution        | situated in stochastic world          |
+|                                    |                                       |
+| Communication: Rigid typed RPC     | Communication: Semantic speech-act    |
+| method signatures                  | performatives (CFP, PROPOSE, ALERT)   |
+|                                    |                                       |
+| Goal: Deterministic execution of   | Goal: Flexible, rational pursuit of   |
+| predetermined algorithmic path     | utility under resource constraints    |
++------------------------------------+---------------------------------------+
+</code></pre>
+<h3 id="41-comparative-analysis-matrix">4.1 Comparative Analysis Matrix</h3>
+<table>
+<thead>
+<tr>
+<th>Architectural Dimension</th>
+<th>Conventional OOP</th>
+<th>Autonomous Agent Paradigm (SentryScan)</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><strong>Control Autonomy</strong></td>
+<td><strong>Subordinate:</strong> An object has no choice over whether to execute an invoked method. If <code>scanner.scan_host()</code> is called, execution proceeds unconditionally.</td>
+<td><strong>Autonomous:</strong> SentryScan agents own their thread of control. When sent a <code>CFP</code> (Call for Proposal), the agent evaluates its resource budget, current workload, and utility equation before choosing whether to bid, pass, or counter-propose.</td>
+</tr>
+<tr>
+<td><strong>Environmental Grounding</strong></td>
+<td><strong>Unsituated:</strong> Objects reside in transient memory heaps. They do not maintain an ongoing, embodied relationship with an evolving external world.</td>
+<td><strong>Situated:</strong> SentryScan is continually grounded in a simulated fleet environment via sensors (telemetry streams, socket listeners) and actuators (event logs, finding publishers).</td>
+</tr>
+<tr>
+<td><strong>State Representation &amp; Deliberation</strong></td>
+<td><strong>Static Data Structures:</strong> Object state consists of primitives and collections (e.g., <code>boolean is_vulnerable</code>).</td>
+<td><strong>Cognitive Modalities (BDI):</strong> SentryScan maintains epistemic <em>Beliefs</em> (fleet posture, network topology), motivational <em>Desires</em> (maximize coverage, surface critical vulnerabilities), and committed <em>Intentions</em> (active inspection plans).</td>
+</tr>
+<tr>
+<td><strong>Interaction Semantics</strong></td>
+<td><strong>Method Invocations:</strong> Tight synchronous coupling via method calls with fixed parameter lists.</td>
+<td><strong>Speech-Act Performatives:</strong> Declarative, loosely coupled message envelopes governed by FIPA-compliant performatives (<code>ALERT</code>, <code>CFP</code>, <code>PROPOSE</code>, <code>ACCEPT</code>, <code>REJECT</code>).</td>
+</tr>
+<tr>
+<td><strong>Resilience &amp; Reconsideration</strong></td>
+<td><strong>Exception Handling:</strong> Rigid control flow via <code>try-catch</code> blocks that unwind stacks on errors.</td>
+<td><strong>Dynamic Re-planning:</strong> SentryScan detects material belief changes (e.g., an unexpected critical vulnerability or an integrity breach) and autonomously triggers intention reconsideration.</td>
+</tr>
+</tbody>
+</table>
+<h3 id="42-explicit-unit-1-paradigm-synthesis">4.2 Explicit Unit-1 Paradigm Synthesis</h3>
+<p>In the terminology of the Unit-1 agent taxonomy, SentryScan embodies a progressive synthesis:
+1. <strong>Simple Reflex Agent (Assignments 1.2, 2.1):</strong> Operates on immediate condition-action rules:
+   $$\text{Rule}: \text{Percept}(service = \text{Telnet}) \implies \text{Action}(\text{Flag}(\text{Unencrypted_Protocol}))$$
+2. <strong>Goal- and Utility-Based Agent (Assignments 3.1, 3.2):</strong> Balances multiple competing outcomes using an explicit mathematical utility formulation:
+   $$U(o) = w_1\,C_{severity}(o) + w_2\,C_{hosts}(o) - w_3\,\text{Cost}(o) - w_4\,\text{Time}(o) - w_5\,\text{Risk}(o)$$
+3. <strong>Deliberative BDI Agent (Assignments 4.1, 5.2):</strong> Implements Bratman's Belief-Desire-Intention cognitive framework, achieving rational balance between commitment to active plans and reactive replanning upon environmental disruption.</p>
+<hr />
+<h2 id="5-initial-architecture-data-flow">5. Initial Architecture &amp; Data Flow</h2>
+<p>SentryScan's initial architecture is grounded in a single-agent Sense–Parse–Decide–Act reflex loop, backed by an isolated environment simulator and a gap-free event persistence pipeline.</p>
+<h3 id="51-architecture-diagram">5.1 Architecture Diagram</h3>
+<p>The structural flow between the simulated fleet, SentryScan's internal reasoning components, and the audit persistence sinks is shown below:</p>
+<div class="diagram-container"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 900 500" width="100%" height="100%">
+  <defs>
+    <style>
+      .bg { fill: #ffffff; }
+      .box { fill: #f8fafc; stroke: #334155; stroke-width: 2; rx: 8; ry: 8; }
+      .box-agent { fill: #eff6ff; stroke: #1d4ed8; stroke-width: 2.5; rx: 10; ry: 10; }
+      .box-sensor { fill: #f0fdf4; stroke: #15803d; stroke-width: 2; rx: 6; ry: 6; }
+      .box-actuator { fill: #fef2f2; stroke: #b91c1c; stroke-width: 2; rx: 6; ry: 6; }
+      .box-storage { fill: #faf5ff; stroke: #7e22ce; stroke-width: 2; rx: 6; ry: 6; }
+      .title { font-family: system-ui, sans-serif; font-size: 16px; font-weight: bold; fill: #0f172a; }
+      .label { font-family: system-ui, sans-serif; font-size: 13px; fill: #334155; }
+      .sublabel { font-family: system-ui, sans-serif; font-size: 11px; fill: #64748b; }
+      .arrow { stroke: #2563eb; stroke-width: 2; fill: none; marker-end: url(#arrowhead); }
+      .arrow-dash { stroke: #64748b; stroke-width: 1.5; stroke-dasharray: 4; fill: none; marker-end: url(#arrowhead-gray); }
+    </style>
+    <marker id="arrowhead" markerWidth="8" markerHeight="6" refX="7" refY="3" orient="auto">
+      <polygon points="0 0, 8 3, 0 6" fill="#2563eb" />
+    </marker>
+    <marker id="arrowhead-gray" markerWidth="8" markerHeight="6" refX="7" refY="3" orient="auto">
+      <polygon points="0 0, 8 3, 0 6" fill="#64748b" />
+    </marker>
+  </defs>
+
+  <rect width="100%" height="100%" class="bg" />
+
+  <!-- Environment Subgraph -->
+  <rect x="30" y="40" width="220" height="420" class="box" />
+  <text x="140" y="70" text-anchor="middle" class="title">Simulated Environment</text>
+  <text x="140" y="90" text-anchor="middle" class="sublabel">IETF RFC 5737 / RFC 3849 Space</text>
+
+  <rect x="50" y="120" width="180" height="60" class="box" />
+  <text x="140" y="145" text-anchor="middle" class="label">Device Fleet Simulator</text>
+  <text x="140" y="165" text-anchor="middle" class="sublabel">sim-host-001 ... sim-host-N</text>
+
+  <rect x="50" y="210" width="180" height="50" class="box" />
+  <text x="140" y="235" text-anchor="middle" class="label">Normal Baseline Stream</text>
+  <text x="140" y="250" text-anchor="middle" class="sublabel">Verified Synthetic Telemetry</text>
+
+  <rect x="50" y="280" width="180" height="50" class="box" />
+  <text x="140" y="305" text-anchor="middle" class="label">Poisoning Mutator</text>
+  <text x="140" y="320" text-anchor="middle" class="sublabel">Stale timestamps, mismatches</text>
+
+  <rect x="50" y="360" width="180" height="70" class="box-storage" />
+  <text x="140" y="385" text-anchor="middle" class="title" fill="#7e22ce">Ground-Truth Store</text>
+  <text x="140" y="405" text-anchor="middle" class="sublabel">Isolated Evaluator-Only</text>
+  <text x="140" y="420" text-anchor="middle" class="sublabel">(Invisible to Agent)</text>
+
+  <!-- Flow in Environment -->
+  <path d="M 140 180 L 140 210" class="arrow" />
+  <path d="M 140 260 L 140 280" class="arrow" />
+  <path d="M 140 330 L 140 360" class="arrow-dash" />
+
+  <!-- SentryScan Agent Subgraph -->
+  <rect x="300" y="40" width="340" height="420" class="box-agent" />
+  <text x="470" y="70" text-anchor="middle" class="title" fill="#1d4ed8">SentryScan Autonomous Agent</text>
+  <text x="470" y="90" text-anchor="middle" class="sublabel">Sense - Parse - Decide - Act Reflex Loop</text>
+
+  <!-- Sensors -->
+  <rect x="320" y="120" width="300" height="55" class="box-sensor" />
+  <text x="470" y="145" text-anchor="middle" class="label" fill="#15803d">SENSORS: Ingestion &amp; Parser</text>
+  <text x="470" y="162" text-anchor="middle" class="sublabel">Schema validation, normalizer, clock binding</text>
+
+  <!-- Integrity & Rule Reasoner -->
+  <rect x="320" y="205" width="300" height="55" class="box-agent" fill="#ffffff" />
+  <text x="470" y="228" text-anchor="middle" class="label" fill="#1d4ed8">INTEGRITY CHECKER</text>
+  <text x="470" y="248" text-anchor="middle" class="sublabel">Plausibility checks (no ground truth)</text>
+
+  <rect x="320" y="285" width="300" height="60" class="box-agent" fill="#ffffff" />
+  <text x="470" y="308" text-anchor="middle" class="label" fill="#1d4ed8">REFLEX RULE ENGINE</text>
+  <text x="470" y="328" text-anchor="middle" class="sublabel">Explicit IF-THEN Condition-Action table</text>
+
+  <!-- Actuators -->
+  <rect x="320" y="375" width="300" height="65" class="box-actuator" />
+  <text x="470" y="400" text-anchor="middle" class="label" fill="#b91c1c">ACTUATORS: Findings &amp; Events</text>
+  <text x="470" y="418" text-anchor="middle" class="sublabel">Structured Finding, monotonic `seq` recorder</text>
+  <text x="470" y="432" text-anchor="middle" class="sublabel">JSON/CSV reports, terminal alerts</text>
+
+  <!-- Internal agent connections -->
+  <path d="M 470 175 L 470 205" class="arrow" />
+  <path d="M 470 260 L 470 285" class="arrow" />
+  <path d="M 470 345 L 470 375" class="arrow" />
+
+  <!-- Connecting Env to Agent -->
+  <path d="M 230 235 L 320 150" class="arrow" />
+  <path d="M 230 305 L 320 150" class="arrow" />
+
+  <!-- Persistence & Output Subgraph -->
+  <rect x="680" y="40" width="190" height="420" class="box" />
+  <text x="775" y="70" text-anchor="middle" class="title">Persistence &amp; Audit</text>
+  <text x="775" y="90" text-anchor="middle" class="sublabel">Gap-Free Monotonic Log</text>
+
+  <rect x="700" y="130" width="150" height="70" class="box-storage" />
+  <text x="775" y="160" text-anchor="middle" class="label" fill="#7e22ce">Append-Only</text>
+  <text x="775" y="180" text-anchor="middle" class="label" fill="#7e22ce">JSONL Trace</text>
+
+  <rect x="700" y="240" width="150" height="70" class="box-storage" />
+  <text x="775" y="270" text-anchor="middle" class="label" fill="#7e22ce">SQLite Run Store</text>
+  <text x="775" y="290" text-anchor="middle" class="sublabel">(Entities &amp; Findings)</text>
+
+  <rect x="700" y="350" width="150" height="70" class="box-actuator" />
+  <text x="775" y="380" text-anchor="middle" class="label" fill="#b91c1c">Console / CSV</text>
+  <text x="775" y="400" text-anchor="middle" class="sublabel">Audit Summaries</text>
+
+  <!-- Connecting Agent to Persistence -->
+  <path d="M 620 405 L 700 165" class="arrow" />
+  <path d="M 620 405 L 700 275" class="arrow" />
+  <path d="M 620 405 L 700 385" class="arrow" />
+</svg></div>
+
+<h3 id="52-environment-and-trust-boundary-model">5.2 Environment and Trust Boundary Model</h3>
+<p>To ensure rigorous security evaluation without contamination, the system enforces a strict isolation boundary between the generator's ground-truth mutations and the agent's percept pipeline:</p>
+<div class="diagram-container"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 850 450" width="100%" height="100%">
+  <defs>
+    <style>
+      .bg { fill: #ffffff; }
+      .box { fill: #f8fafc; stroke: #475569; stroke-width: 2; rx: 8; ry: 8; }
+      .zone-untrusted { fill: #fff7ed; stroke: #ea580c; stroke-width: 2; stroke-dasharray: 5; rx: 10; ry: 10; }
+      .zone-trusted { fill: #f0fdf4; stroke: #16a34a; stroke-width: 2; rx: 10; ry: 10; }
+      .zone-eval { fill: #fef2f2; stroke: #dc2626; stroke-width: 2; stroke-dasharray: 4; rx: 10; ry: 10; }
+      .title { font-family: system-ui, sans-serif; font-size: 15px; font-weight: bold; fill: #0f172a; }
+      .label { font-family: system-ui, sans-serif; font-size: 13px; fill: #1e293b; }
+      .sublabel { font-family: system-ui, sans-serif; font-size: 11px; fill: #64748b; }
+      .arrow { stroke: #0284c7; stroke-width: 2; fill: none; marker-end: url(#arrow); }
+      .arrow-red { stroke: #dc2626; stroke-width: 1.5; stroke-dasharray: 3; fill: none; marker-end: url(#arrow-r); }
+    </style>
+    <marker id="arrow" markerWidth="8" markerHeight="6" refX="7" refY="3" orient="auto">
+      <polygon points="0 0, 8 3, 0 6" fill="#0284c7" />
+    </marker>
+    <marker id="arrow-r" markerWidth="8" markerHeight="6" refX="7" refY="3" orient="auto">
+      <polygon points="0 0, 8 3, 0 6" fill="#dc2626" />
+    </marker>
+  </defs>
+
+  <rect width="100%" height="100%" class="bg" />
+
+  <!-- Untrusted Environment Boundary -->
+  <rect x="30" y="30" width="360" height="390" class="zone-untrusted" />
+  <text x="210" y="58" text-anchor="middle" class="title" fill="#c2410c">Untrusted Simulation Zone</text>
+  <text x="210" y="76" text-anchor="middle" class="sublabel">Raw Telemetry &amp; Injected Mutations</text>
+
+  <rect x="50" y="100" width="320" height="70" class="box" fill="#ffffff" />
+  <text x="210" y="128" text-anchor="middle" class="label">Simulated Device Fleet</text>
+  <text x="210" y="148" text-anchor="middle" class="sublabel">Emits synthetic host records (sim-host-001 ... N)</text>
+
+  <rect x="50" y="200" width="150" height="60" class="box" fill="#ffffff" />
+  <text x="125" y="228" text-anchor="middle" class="label">Normal Stream</text>
+  <text x="125" y="246" text-anchor="middle" class="sublabel">Valid service records</text>
+
+  <rect x="220" y="200" width="150" height="60" class="box" fill="#ffffff" />
+  <text x="295" y="228" text-anchor="middle" class="label">Poisoned Stream</text>
+  <text x="295" y="246" text-anchor="middle" class="sublabel">Contradictions / drift</text>
+
+  <!-- Evaluator Sidecar (Isolated) -->
+  <rect x="50" y="300" width="320" height="90" class="zone-eval" />
+  <text x="210" y="330" text-anchor="middle" class="title" fill="#dc2626">Isolated Ground-Truth Sidecar</text>
+  <text x="210" y="350" text-anchor="middle" class="sublabel">Stores true injection labels: record_id, injection_type</text>
+  <text x="210" y="370" text-anchor="middle" class="sublabel" font-weight="bold">STRICTLY ISOLATED FROM SENTRYSCAN AGENT</text>
+
+  <path d="M 125 170 L 125 200" class="arrow" />
+  <path d="M 295 170 L 295 200" class="arrow" />
+  <path d="M 295 260 L 295 300" class="arrow-red" />
+
+  <!-- Trusted Agent Processing Boundary -->
+  <rect x="440" y="30" width="380" height="390" class="zone-trusted" />
+  <text x="630" y="58" text-anchor="middle" class="title" fill="#15803d">Trusted SentryScan Boundary</text>
+  <text x="630" y="76" text-anchor="middle" class="sublabel">Sense, Verify, Deliberate, Actuate</text>
+
+  <rect x="470" y="100" width="320" height="65" class="box" fill="#ffffff" />
+  <text x="630" y="126" text-anchor="middle" class="label">Parser &amp; Sanitizer Sensor</text>
+  <text x="630" y="146" text-anchor="middle" class="sublabel">Rejects malformed JSON; quotes untrusted strings</text>
+
+  <rect x="470" y="195" width="320" height="65" class="box" fill="#ffffff" />
+  <text x="630" y="222" text-anchor="middle" class="label">Data-Level Integrity Checker</text>
+  <text x="630" y="242" text-anchor="middle" class="sublabel">Detects freshness, rate, and schema drift</text>
+
+  <rect x="470" y="290" width="320" height="100" class="box" fill="#ffffff" />
+  <text x="630" y="318" text-anchor="middle" class="label">Reflex Rule Engine &amp; Finding Actuator</text>
+  <text x="630" y="340" text-anchor="middle" class="sublabel">Evaluates explicit rules $\to$ emits Finding records</text>
+  <text x="630" y="362" text-anchor="middle" class="sublabel">Commits to single-writer event recorder (monotonic seq)</text>
+
+  <!-- Across Boundary Connections -->
+  <path d="M 200 230 L 470 132" class="arrow" />
+  <path d="M 370 230 L 470 132" class="arrow" />
+  <path d="M 630 165 L 630 195" class="arrow" />
+  <path d="M 630 260 L 630 290" class="arrow" />
+</svg></div>
+
+<h3 id="53-step-by-step-processing-pipeline">5.3 Step-by-Step Processing Pipeline</h3>
+<ol>
+<li><strong>Telemetry Sensing (<code>Sensor</code>):</strong></li>
+<li>The device fleet emits JSON records over an in-memory queue.</li>
+<li>The ingestion sensor decodes the payload, validates types, and bounds port values ($1 \dots 65535$). Malformed payloads trigger an immediate <code>record_rejected</code> audit event.</li>
+<li><strong>Plausibility &amp; Integrity Inspection (<code>IntegrityChecker</code>):</strong></li>
+<li>SentryScan evaluates data-level sanity: timestamp freshness relative to the injected <code>Clock</code>, port-to-service plausibility, and duplicate payload hashes.</li>
+<li>Suspect records are tagged with an <code>integrity_flags</code> list rather than silently discarded, preserving forensic traceability.</li>
+<li><strong>Reflex Rule Evaluation (<code>RuleEngine</code>):</strong></li>
+<li>The parsed percept is matched against an explicit condition–action table.</li>
+<li>Every match emits a deterministic <code>Finding</code> record with immutable severity (<code>CRITICAL</code>, <code>HIGH</code>, <code>MEDIUM</code>, <code>LOW</code>) and confidence scores.</li>
+<li><strong>Audit Logging &amp; Actuation (<code>Actuators</code>):</strong></li>
+<li>The single-writer <code>EventRecorder</code> assigns a monotonic, gap-free sequence number (<code>seq</code>).</li>
+<li>The event is appended to <code>data/runs/{run_id}/trace.jsonl</code> and prepared for SQLite indexing, ensuring full retrospective reproducibility.</li>
+</ol>
+<hr />
+<h2 id="6-future-multi-agent-deliberative-extensions">6. Future Multi-Agent &amp; Deliberative Extensions</h2>
+<p>While Assignment 1.1 focuses on foundational modeling and the single-agent reflex loop, the architecture incorporates explicit expansion seams designed for subsequent course units:</p>
+<pre><code class="language-text">Assignment 1.1 (Foundations)
+       │
+       ▼
+Assignment 1.2: Deterministic Rule Engine &amp; JSONL Recorder
+       │
+       ▼
+Assignment 2.1: Concurrent Fleet Daemon &amp; Integrity Checker
+       │
+       ▼
+Assignment 2.2: Two-Process Architecture over TCP Socket Transport
+       │
+       ▼
+Assignment 3.1: LangGraph Supervisor &amp; Multi-Agent Negotiation (Scout vs. Triage)
+       │
+       ▼
+Assignment 3.2: Explicit Mathematical Utility Optimization
+       │
+       ▼
+Assignment 4.1: Deliberative BDI Cognitive Architecture (Analyst Agent)
+       │
+       ▼
+Assignment 4.2: Vulnerability Knowledge Ontology &amp; NVD Enrichment
+       │
+       ▼
+Assignment 5.1: Ed25519 Cryptographic Envelope Authentication
+       │
+       ▼
+Assignment 5.2: Capstone Integration &amp; Real-Time Browser Dashboard
+</code></pre>
+<ol>
+<li><strong>Concurrency and Asynchronous Queues (Unit 2):</strong> Ingestion shifts to a non-blocking background daemon using <code>threading</code> and <code>queue.Queue</code>, guarded by mutex locks against race conditions.</li>
+<li><strong>Distributed Process Topology (Unit 2):</strong> The Analyst agent decouples into a separate process communicating over length-prefixed TCP localhost sockets.</li>
+<li><strong>Multi-Agent Coordination via LangGraph (Unit 3):</strong> The monolithic supervisor coordinates autonomous subagents (<code>ScoutAgent</code> prioritizing coverage; <code>TriageAgent</code> prioritizing critical risk) utilizing Contract-Net negotiation (<code>CFP</code> $\to$ <code>PROPOSE</code> $\to$ <code>COUNTERPROPOSE</code> $\to$ <code>ACCEPT</code>/<code>REJECT</code>).</li>
+<li><strong>Utility-Driven Decision Optimization (Unit 3):</strong> Bids are evaluated through an explicit, normalized multi-attribute objective function under hard budget constraints.</li>
+<li><strong>Belief-Desire-Intention (BDI) Deliberation (Unit 4):</strong> The Analyst agent maintains epistemic beliefs and reconsider intentions when high-severity alerts arrive.</li>
+<li><strong>Cryptographic Identity &amp; Security Gate (Unit 5):</strong> Inter-agent messages are signed using Ed25519 over canonical byte representations with anti-replay nonce tracking.</li>
+</ol>
+</body>
+</html>
