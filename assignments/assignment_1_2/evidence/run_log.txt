@@ -1,0 +1,94 @@
+﻿[*] Starting SentryScan Reflex Reasoner Demonstration (Assignment 1.2)...
+[*] Loading fixture: sample_seed42.json
+[*] Ingesting 20 synthetic telemetry percepts...
+
+--------------- SentryScan Reflex Analysis ù Run: run-demo-1-2 ----------------
+       Execution Ingestion Metrics       
++---------------------------------------+
+| Metric                        | Count |
+|-------------------------------+-------|
+| Total Raw Percepts Sensed     | 20    |
+| Valid Records Ingested        | 18    |
+| Malformed Records Quarantined | 2     |
+| Total Vulnerability Findings  | 13    |
++---------------------------------------+
+                         Detected Exposures & Findings                         
++-----------------------------------------------------------------------------+
+| Finding ID | Host         | Port/Svc   | Severity | Rule ID  | Title        |
+|------------+--------------+------------+----------+----------+--------------|
+| fnd-000001 | sim-host-001 | 23/telnet  | HIGH     | RULE-001 | Unencrypted  |
+|            |              |            |          |          | Telnet       |
+|            |              |            |          |          | Management   |
+|            |              |            |          |          | Protocol     |
+|            |              |            |          |          | Exposed      |
+| fnd-000002 | sim-host-002 | 21/ftp     | MEDIUM   | RULE-002 | Unauthenticà |
+|            |              |            |          |          | Anonymous    |
+|            |              |            |          |          | FTP Service  |
+|            |              |            |          |          | Exposed      |
+| fnd-000003 | sim-host-002 | 21/ftp     | CRITICAL | RULE-005 | Known        |
+|            |              |            |          |          | Critical     |
+|            |              |            |          |          | Remote       |
+|            |              |            |          |          | Vulnerabilià |
+|            |              |            |          |          | Banner       |
+|            |              |            |          |          | Detected     |
+| fnd-000004 | sim-host-002 | 443/https  | HIGH     | RULE-003 | Deprecated   |
+|            |              |            |          |          | Cryptographà |
+|            |              |            |          |          | Transport    |
+|            |              |            |          |          | Protocol     |
+|            |              |            |          |          | (TLS/SSL)    |
+| fnd-000005 | sim-host-003 | 8080/http  | CRITICAL | RULE-004 | Default      |
+|            |              |            |          |          | Administratà |
+|            |              |            |          |          | Credentials  |
+|            |              |            |          |          | Active on    |
+|            |              |            |          |          | Service      |
+| fnd-000006 | sim-host-003 | 8080/http  | MEDIUM   | RULE-006 | Cleartext    |
+|            |              |            |          |          | HTTP         |
+|            |              |            |          |          | Management   |
+|            |              |            |          |          | Interface    |
+|            |              |            |          |          | Exposed      |
+| fnd-000007 | sim-host-003 | 8443/https | HIGH     | RULE-003 | Deprecated   |
+|            |              |            |          |          | Cryptographà |
+|            |              |            |          |          | Transport    |
+|            |              |            |          |          | Protocol     |
+|            |              |            |          |          | (TLS/SSL)    |
+| fnd-000008 | sim-host-004 | 80/http    | CRITICAL | RULE-005 | Known        |
+|            |              |            |          |          | Critical     |
+|            |              |            |          |          | Remote       |
+|            |              |            |          |          | Vulnerabilià |
+|            |              |            |          |          | Banner       |
+|            |              |            |          |          | Detected     |
+| fnd-000009 | sim-host-007 | 23/telnet  | HIGH     | RULE-001 | Unencrypted  |
+|            |              |            |          |          | Telnet       |
+|            |              |            |          |          | Management   |
+|            |              |            |          |          | Protocol     |
+|            |              |            |          |          | Exposed      |
+| fnd-000010 | sim-host-007 | 9000/http  | CRITICAL | RULE-004 | Default      |
+|            |              |            |          |          | Administratà |
+|            |              |            |          |          | Credentials  |
+|            |              |            |          |          | Active on    |
+|            |              |            |          |          | Service      |
+| fnd-000011 | sim-host-007 | 9000/http  | MEDIUM   | RULE-006 | Cleartext    |
+|            |              |            |          |          | HTTP         |
+|            |              |            |          |          | Management   |
+|            |              |            |          |          | Interface    |
+|            |              |            |          |          | Exposed      |
+| fnd-000012 | sim-host-008 | 21/ftp     | MEDIUM   | RULE-002 | Unauthenticà |
+|            |              |            |          |          | Anonymous    |
+|            |              |            |          |          | FTP Service  |
+|            |              |            |          |          | Exposed      |
+| fnd-000013 | sim-host-009 | 443/https  | HIGH     | RULE-003 | Deprecated   |
+|            |              |            |          |          | Cryptographà |
+|            |              |            |          |          | Transport    |
+|            |              |            |          |          | Protocol     |
+|            |              |            |          |          | (TLS/SSL)    |
++-----------------------------------------------------------------------------+
+--------------------------- End of Analysis Summary ---------------------------
+
+[*] Execution Verification:
+    - Total Percepts Sensed:       20 (Expected: 20)
+    - Valid Telemetry Ingested:    18 (Expected: 18)
+    - Malformed Records Rejected:  2 (Expected: 2)
+    - Exposures / Findings:        13
+    - JSONL Trace Path:            C:\Users\Ganesh\Desktop\Agent Technology1\SentryScan\data\runs\demo_1_2\trace.jsonl
+    - Findings Path:               C:\Users\Ganesh\Desktop\Agent Technology1\SentryScan\data\runs\demo_1_2\findings.json
+[+] Demonstration completed successfully with 100% contract compliance!
