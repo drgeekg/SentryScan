@@ -64,3 +64,49 @@ SentryScan's operational environment is categorized along the seven classical di
 | **Discrete vs. Continuous** | **Discrete** | Percepts, state variables, and actions are discrete. Network ports are integers ($1 \dots 65535$), performatives belong to a finite enumeration (`ALERT`, `CFP`, `PROPOSE`, etc.), vulnerability severities are categorical (`LOW`, `MEDIUM`, `HIGH`, `CRITICAL`), and event sequences follow discrete monotonic steps ($seq \in \mathbb{N}$). |
 | **Single-Agent vs. Multi-Agent** | **Multi-Agent** | SentryScan operates as a multi-agent system from Unit 3 onwards. The supervisor coordinates multiple specialized agents (Scout, Triage, Scanner Workers, and Analyst) with partially conflicting utility functions (Scout seeks breadth of host coverage; Triage seeks depth of critical risk). They engage in Contract-Net negotiation to achieve task allocation. |
 | **Known vs. Unknown** | **Known** | The structural laws of the environment—telemetry schemas, rule definitions, network protocols, and utility equations—are completely specified and known to the agent design. The state of individual devices, however, must be discovered through telemetry sensing. |
+
+
+---
+
+## 4. Agent Architecture vs. Conventional Object-Oriented Programming (OOP)
+
+A fundamental theoretical pillar of Unit 1 (Agent Technology) is distinguishing autonomous agent architectures from conventional Object-Oriented Programming paradigms (Russell & Norvig, Chapter 2; Wooldridge, *An Introduction to MultiAgent Systems*).
+
+```text
++------------------------------------+---------------------------------------+
+| Conventional OOP Paradigm          | Autonomous Agent Paradigm (SentryScan) |
++------------------------------------+---------------------------------------+
+| Invocation: Passive method dispatch| Interaction: Autonomous reaction &    |
+| (caller forces execution)          | deliberate acceptance of messages     |
+|                                    |                                       |
+| State: Internal variables &        | State: Cognitive mental models        |
+| encapsulated data structures       | (Beliefs, Desires, Intentions)        |
+|                                    |                                       |
+| Environment: Abstracted away;      | Environment: Continuously sensed,     |
+| closed-world heap execution        | situated in stochastic world          |
+|                                    |                                       |
+| Communication: Rigid typed RPC     | Communication: Semantic speech-act    |
+| method signatures                  | performatives (CFP, PROPOSE, ALERT)   |
+|                                    |                                       |
+| Goal: Deterministic execution of   | Goal: Flexible, rational pursuit of   |
+| predetermined algorithmic path     | utility under resource constraints    |
++------------------------------------+---------------------------------------+
+```
+
+### 4.1 Comparative Analysis Matrix
+
+| Architectural Dimension | Conventional OOP | Autonomous Agent Paradigm (SentryScan) |
+|---|---|---|
+| **Control Autonomy** | **Subordinate:** An object has no choice over whether to execute an invoked method. If `scanner.scan_host()` is called, execution proceeds unconditionally. | **Autonomous:** SentryScan agents own their thread of control. When sent a `CFP` (Call for Proposal), the agent evaluates its resource budget, current workload, and utility equation before choosing whether to bid, pass, or counter-propose. |
+| **Environmental Grounding** | **Unsituated:** Objects reside in transient memory heaps. They do not maintain an ongoing, embodied relationship with an evolving external world. | **Situated:** SentryScan is continually grounded in a simulated fleet environment via sensors (telemetry streams, socket listeners) and actuators (event logs, finding publishers). |
+| **State Representation & Deliberation** | **Static Data Structures:** Object state consists of primitives and collections (e.g., `boolean is_vulnerable`). | **Cognitive Modalities (BDI):** SentryScan maintains epistemic *Beliefs* (fleet posture, network topology), motivational *Desires* (maximize coverage, surface critical vulnerabilities), and committed *Intentions* (active inspection plans). |
+| **Interaction Semantics** | **Method Invocations:** Tight synchronous coupling via method calls with fixed parameter lists. | **Speech-Act Performatives:** Declarative, loosely coupled message envelopes governed by FIPA-compliant performatives (`ALERT`, `CFP`, `PROPOSE`, `ACCEPT`, `REJECT`). |
+| **Resilience & Reconsideration** | **Exception Handling:** Rigid control flow via `try-catch` blocks that unwind stacks on errors. | **Dynamic Re-planning:** SentryScan detects material belief changes (e.g., an unexpected critical vulnerability or an integrity breach) and autonomously triggers intention reconsideration. |
+
+### 4.2 Explicit Unit-1 Paradigm Synthesis
+In the terminology of the Unit-1 agent taxonomy, SentryScan embodies a progressive synthesis:
+1. **Simple Reflex Agent (Assignments 1.2, 2.1):** Operates on immediate condition-action rules:
+   $$\text{Rule}: \text{Percept}(service = \text{Telnet}) \implies \text{Action}(\text{Flag}(\text{Unencrypted\_Protocol}))$$
+2. **Goal- and Utility-Based Agent (Assignments 3.1, 3.2):** Balances multiple competing outcomes using an explicit mathematical utility formulation:
+   $$U(o) = w_1\,C_{severity}(o) + w_2\,C_{hosts}(o) - w_3\,\text{Cost}(o) - w_4\,\text{Time}(o) - w_5\,\text{Risk}(o)$$
+3. **Deliberative BDI Agent (Assignments 4.1, 5.2):** Implements Bratman's Belief-Desire-Intention cognitive framework, achieving rational balance between commitment to active plans and reactive replanning upon environmental disruption.
