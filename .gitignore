@@ -1,0 +1,66 @@
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+build/
+develop-eggs/
+dist/
+downloads/
+eggs/
+.eggs/
+lib/
+lib64/
+parts/
+sdist/
+var/
+wheels/
+share/python-wheels/
+*.egg-info/
+.installed.cfg
+*.egg
+MANIFEST
+
+# Virtual Environments
+.venv/
+venv/
+ENV/
+env/
+
+# Testing & Coverage
+.pytest_cache/
+.coverage
+htmlcov/
+.tox/
+.nox/
+
+# Linters & Formatters
+.mypy_cache/
+.ruff_cache/
+
+# Local data & run storage
+data/runs/
+storage/*.sqlite3
+storage/*.sqlite3-shm
+storage/*.sqlite3-wal
+storage/*.db
+logs/*.log
+!logs/examples/
+!logs/README.md
+
+# Security & Secrets
+.env
+keys/
+*.pem
+*.key
+*.priv
+
+# Node / Frontend (for later 5.2 milestone)
+frontend/node_modules/
+frontend/.vite/
+
+# OS specific
+.DS_Store
+Thumbs.db
+Desktop.ini
