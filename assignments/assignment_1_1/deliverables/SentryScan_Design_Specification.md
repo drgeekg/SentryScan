@@ -110,3 +110,78 @@ In the terminology of the Unit-1 agent taxonomy, SentryScan embodies a progressi
 2. **Goal- and Utility-Based Agent (Assignments 3.1, 3.2):** Balances multiple competing outcomes using an explicit mathematical utility formulation:
    $$U(o) = w_1\,C_{severity}(o) + w_2\,C_{hosts}(o) - w_3\,\text{Cost}(o) - w_4\,\text{Time}(o) - w_5\,\text{Risk}(o)$$
 3. **Deliberative BDI Agent (Assignments 4.1, 5.2):** Implements Bratman's Belief-Desire-Intention cognitive framework, achieving rational balance between commitment to active plans and reactive replanning upon environmental disruption.
+
+
+---
+
+## 5. Initial Architecture & Data Flow
+
+SentryScan's initial architecture is grounded in a single-agent Sense–Parse–Decide–Act reflex loop, backed by an isolated environment simulator and a gap-free event persistence pipeline.
+
+### 5.1 Architecture Diagram
+The structural flow between the simulated fleet, SentryScan's internal reasoning components, and the audit persistence sinks is shown below:
+
+![SentryScan Initial Architecture](diagrams/architecture.svg)
+
+### 5.2 Environment and Trust Boundary Model
+To ensure rigorous security evaluation without contamination, the system enforces a strict isolation boundary between the generator's ground-truth mutations and the agent's percept pipeline:
+
+![Environment and Trust Boundary Model](diagrams/environment_model.svg)
+
+### 5.3 Step-by-Step Processing Pipeline
+1. **Telemetry Sensing (`Sensor`):**
+   - The device fleet emits JSON records over an in-memory queue.
+   - The ingestion sensor decodes the payload, validates types, and bounds port values ($1 \dots 65535$). Malformed payloads trigger an immediate `record_rejected` audit event.
+2. **Plausibility & Integrity Inspection (`IntegrityChecker`):**
+   - SentryScan evaluates data-level sanity: timestamp freshness relative to the injected `Clock`, port-to-service plausibility, and duplicate payload hashes.
+   - Suspect records are tagged with an `integrity_flags` list rather than silently discarded, preserving forensic traceability.
+3. **Reflex Rule Evaluation (`RuleEngine`):**
+   - The parsed percept is matched against an explicit condition–action table.
+   - Every match emits a deterministic `Finding` record with immutable severity (`CRITICAL`, `HIGH`, `MEDIUM`, `LOW`) and confidence scores.
+4. **Audit Logging & Actuation (`Actuators`):**
+   - The single-writer `EventRecorder` assigns a monotonic, gap-free sequence number (`seq`).
+   - The event is appended to `data/runs/{run_id}/trace.jsonl` and prepared for SQLite indexing, ensuring full retrospective reproducibility.
+
+---
+
+## 6. Future Multi-Agent & Deliberative Extensions
+
+While Assignment 1.1 focuses on foundational modeling and the single-agent reflex loop, the architecture incorporates explicit expansion seams designed for subsequent course units:
+
+```text
+Assignment 1.1 (Foundations)
+       │
+       ▼
+Assignment 1.2: Deterministic Rule Engine & JSONL Recorder
+       │
+       ▼
+Assignment 2.1: Concurrent Fleet Daemon & Integrity Checker
+       │
+       ▼
+Assignment 2.2: Two-Process Architecture over TCP Socket Transport
+       │
+       ▼
+Assignment 3.1: LangGraph Supervisor & Multi-Agent Negotiation (Scout vs. Triage)
+       │
+       ▼
+Assignment 3.2: Explicit Mathematical Utility Optimization
+       │
+       ▼
+Assignment 4.1: Deliberative BDI Cognitive Architecture (Analyst Agent)
+       │
+       ▼
+Assignment 4.2: Vulnerability Knowledge Ontology & NVD Enrichment
+       │
+       ▼
+Assignment 5.1: Ed25519 Cryptographic Envelope Authentication
+       │
+       ▼
+Assignment 5.2: Capstone Integration & Real-Time Browser Dashboard
+```
+
+1. **Concurrency and Asynchronous Queues (Unit 2):** Ingestion shifts to a non-blocking background daemon using `threading` and `queue.Queue`, guarded by mutex locks against race conditions.
+2. **Distributed Process Topology (Unit 2):** The Analyst agent decouples into a separate process communicating over length-prefixed TCP localhost sockets.
+3. **Multi-Agent Coordination via LangGraph (Unit 3):** The monolithic supervisor coordinates autonomous subagents (`ScoutAgent` prioritizing coverage; `TriageAgent` prioritizing critical risk) utilizing Contract-Net negotiation (`CFP` $\to$ `PROPOSE` $\to$ `COUNTERPROPOSE` $\to$ `ACCEPT`/`REJECT`).
+4. **Utility-Driven Decision Optimization (Unit 3):** Bids are evaluated through an explicit, normalized multi-attribute objective function under hard budget constraints.
+5. **Belief-Desire-Intention (BDI) Deliberation (Unit 4):** The Analyst agent maintains epistemic beliefs and reconsider intentions when high-severity alerts arrive.
+6. **Cryptographic Identity & Security Gate (Unit 5):** Inter-agent messages are signed using Ed25519 over canonical byte representations with anti-replay nonce tracking.

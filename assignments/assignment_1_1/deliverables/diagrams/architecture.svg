@@ -1,0 +1,108 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 900 500" width="100%" height="100%">
+  <defs>
+    <style>
+      .bg { fill: #ffffff; }
+      .box { fill: #f8fafc; stroke: #334155; stroke-width: 2; rx: 8; ry: 8; }
+      .box-agent { fill: #eff6ff; stroke: #1d4ed8; stroke-width: 2.5; rx: 10; ry: 10; }
+      .box-sensor { fill: #f0fdf4; stroke: #15803d; stroke-width: 2; rx: 6; ry: 6; }
+      .box-actuator { fill: #fef2f2; stroke: #b91c1c; stroke-width: 2; rx: 6; ry: 6; }
+      .box-storage { fill: #faf5ff; stroke: #7e22ce; stroke-width: 2; rx: 6; ry: 6; }
+      .title { font-family: system-ui, sans-serif; font-size: 16px; font-weight: bold; fill: #0f172a; }
+      .label { font-family: system-ui, sans-serif; font-size: 13px; fill: #334155; }
+      .sublabel { font-family: system-ui, sans-serif; font-size: 11px; fill: #64748b; }
+      .arrow { stroke: #2563eb; stroke-width: 2; fill: none; marker-end: url(#arrowhead); }
+      .arrow-dash { stroke: #64748b; stroke-width: 1.5; stroke-dasharray: 4; fill: none; marker-end: url(#arrowhead-gray); }
+    </style>
+    <marker id="arrowhead" markerWidth="8" markerHeight="6" refX="7" refY="3" orient="auto">
+      <polygon points="0 0, 8 3, 0 6" fill="#2563eb" />
+    </marker>
+    <marker id="arrowhead-gray" markerWidth="8" markerHeight="6" refX="7" refY="3" orient="auto">
+      <polygon points="0 0, 8 3, 0 6" fill="#64748b" />
+    </marker>
+  </defs>
+
+  <rect width="100%" height="100%" class="bg" />
+
+  <!-- Environment Subgraph -->
+  <rect x="30" y="40" width="220" height="420" class="box" />
+  <text x="140" y="70" text-anchor="middle" class="title">Simulated Environment</text>
+  <text x="140" y="90" text-anchor="middle" class="sublabel">IETF RFC 5737 / RFC 3849 Space</text>
+
+  <rect x="50" y="120" width="180" height="60" class="box" />
+  <text x="140" y="145" text-anchor="middle" class="label">Device Fleet Simulator</text>
+  <text x="140" y="165" text-anchor="middle" class="sublabel">sim-host-001 ... sim-host-N</text>
+
+  <rect x="50" y="210" width="180" height="50" class="box" />
+  <text x="140" y="235" text-anchor="middle" class="label">Normal Baseline Stream</text>
+  <text x="140" y="250" text-anchor="middle" class="sublabel">Verified Synthetic Telemetry</text>
+
+  <rect x="50" y="280" width="180" height="50" class="box" />
+  <text x="140" y="305" text-anchor="middle" class="label">Poisoning Mutator</text>
+  <text x="140" y="320" text-anchor="middle" class="sublabel">Stale timestamps, mismatches</text>
+
+  <rect x="50" y="360" width="180" height="70" class="box-storage" />
+  <text x="140" y="385" text-anchor="middle" class="title" fill="#7e22ce">Ground-Truth Store</text>
+  <text x="140" y="405" text-anchor="middle" class="sublabel">Isolated Evaluator-Only</text>
+  <text x="140" y="420" text-anchor="middle" class="sublabel">(Invisible to Agent)</text>
+
+  <!-- Flow in Environment -->
+  <path d="M 140 180 L 140 210" class="arrow" />
+  <path d="M 140 260 L 140 280" class="arrow" />
+  <path d="M 140 330 L 140 360" class="arrow-dash" />
+
+  <!-- SentryScan Agent Subgraph -->
+  <rect x="300" y="40" width="340" height="420" class="box-agent" />
+  <text x="470" y="70" text-anchor="middle" class="title" fill="#1d4ed8">SentryScan Autonomous Agent</text>
+  <text x="470" y="90" text-anchor="middle" class="sublabel">Sense - Parse - Decide - Act Reflex Loop</text>
+
+  <!-- Sensors -->
+  <rect x="320" y="120" width="300" height="55" class="box-sensor" />
+  <text x="470" y="145" text-anchor="middle" class="label" fill="#15803d">SENSORS: Ingestion &amp; Parser</text>
+  <text x="470" y="162" text-anchor="middle" class="sublabel">Schema validation, normalizer, clock binding</text>
+
+  <!-- Integrity & Rule Reasoner -->
+  <rect x="320" y="205" width="300" height="55" class="box-agent" fill="#ffffff" />
+  <text x="470" y="228" text-anchor="middle" class="label" fill="#1d4ed8">INTEGRITY CHECKER</text>
+  <text x="470" y="248" text-anchor="middle" class="sublabel">Plausibility checks (no ground truth)</text>
+
+  <rect x="320" y="285" width="300" height="60" class="box-agent" fill="#ffffff" />
+  <text x="470" y="308" text-anchor="middle" class="label" fill="#1d4ed8">REFLEX RULE ENGINE</text>
+  <text x="470" y="328" text-anchor="middle" class="sublabel">Explicit IF-THEN Condition-Action table</text>
+
+  <!-- Actuators -->
+  <rect x="320" y="375" width="300" height="65" class="box-actuator" />
+  <text x="470" y="400" text-anchor="middle" class="label" fill="#b91c1c">ACTUATORS: Findings &amp; Events</text>
+  <text x="470" y="418" text-anchor="middle" class="sublabel">Structured Finding, monotonic `seq` recorder</text>
+  <text x="470" y="432" text-anchor="middle" class="sublabel">JSON/CSV reports, terminal alerts</text>
+
+  <!-- Internal agent connections -->
+  <path d="M 470 175 L 470 205" class="arrow" />
+  <path d="M 470 260 L 470 285" class="arrow" />
+  <path d="M 470 345 L 470 375" class="arrow" />
+
+  <!-- Connecting Env to Agent -->
+  <path d="M 230 235 L 320 150" class="arrow" />
+  <path d="M 230 305 L 320 150" class="arrow" />
+
+  <!-- Persistence & Output Subgraph -->
+  <rect x="680" y="40" width="190" height="420" class="box" />
+  <text x="775" y="70" text-anchor="middle" class="title">Persistence &amp; Audit</text>
+  <text x="775" y="90" text-anchor="middle" class="sublabel">Gap-Free Monotonic Log</text>
+
+  <rect x="700" y="130" width="150" height="70" class="box-storage" />
+  <text x="775" y="160" text-anchor="middle" class="label" fill="#7e22ce">Append-Only</text>
+  <text x="775" y="180" text-anchor="middle" class="label" fill="#7e22ce">JSONL Trace</text>
+
+  <rect x="700" y="240" width="150" height="70" class="box-storage" />
+  <text x="775" y="270" text-anchor="middle" class="label" fill="#7e22ce">SQLite Run Store</text>
+  <text x="775" y="290" text-anchor="middle" class="sublabel">(Entities &amp; Findings)</text>
+
+  <rect x="700" y="350" width="150" height="70" class="box-actuator" />
+  <text x="775" y="380" text-anchor="middle" class="label" fill="#b91c1c">Console / CSV</text>
+  <text x="775" y="400" text-anchor="middle" class="sublabel">Audit Summaries</text>
+
+  <!-- Connecting Agent to Persistence -->
+  <path d="M 620 405 L 700 165" class="arrow" />
+  <path d="M 620 405 L 700 275" class="arrow" />
+  <path d="M 620 405 L 700 385" class="arrow" />
+</svg>
