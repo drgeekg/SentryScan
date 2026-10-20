@@ -1,0 +1,75 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 850 450" width="100%" height="100%">
+  <defs>
+    <style>
+      .bg { fill: #ffffff; }
+      .box { fill: #f8fafc; stroke: #475569; stroke-width: 2; rx: 8; ry: 8; }
+      .zone-untrusted { fill: #fff7ed; stroke: #ea580c; stroke-width: 2; stroke-dasharray: 5; rx: 10; ry: 10; }
+      .zone-trusted { fill: #f0fdf4; stroke: #16a34a; stroke-width: 2; rx: 10; ry: 10; }
+      .zone-eval { fill: #fef2f2; stroke: #dc2626; stroke-width: 2; stroke-dasharray: 4; rx: 10; ry: 10; }
+      .title { font-family: system-ui, sans-serif; font-size: 15px; font-weight: bold; fill: #0f172a; }
+      .label { font-family: system-ui, sans-serif; font-size: 13px; fill: #1e293b; }
+      .sublabel { font-family: system-ui, sans-serif; font-size: 11px; fill: #64748b; }
+      .arrow { stroke: #0284c7; stroke-width: 2; fill: none; marker-end: url(#arrow); }
+      .arrow-red { stroke: #dc2626; stroke-width: 1.5; stroke-dasharray: 3; fill: none; marker-end: url(#arrow-r); }
+    </style>
+    <marker id="arrow" markerWidth="8" markerHeight="6" refX="7" refY="3" orient="auto">
+      <polygon points="0 0, 8 3, 0 6" fill="#0284c7" />
+    </marker>
+    <marker id="arrow-r" markerWidth="8" markerHeight="6" refX="7" refY="3" orient="auto">
+      <polygon points="0 0, 8 3, 0 6" fill="#dc2626" />
+    </marker>
+  </defs>
+
+  <rect width="100%" height="100%" class="bg" />
+
+  <!-- Untrusted Environment Boundary -->
+  <rect x="30" y="30" width="360" height="390" class="zone-untrusted" />
+  <text x="210" y="58" text-anchor="middle" class="title" fill="#c2410c">Untrusted Simulation Zone</text>
+  <text x="210" y="76" text-anchor="middle" class="sublabel">Raw Telemetry &amp; Injected Mutations</text>
+
+  <rect x="50" y="100" width="320" height="70" class="box" fill="#ffffff" />
+  <text x="210" y="128" text-anchor="middle" class="label">Simulated Device Fleet</text>
+  <text x="210" y="148" text-anchor="middle" class="sublabel">Emits synthetic host records (sim-host-001 ... N)</text>
+
+  <rect x="50" y="200" width="150" height="60" class="box" fill="#ffffff" />
+  <text x="125" y="228" text-anchor="middle" class="label">Normal Stream</text>
+  <text x="125" y="246" text-anchor="middle" class="sublabel">Valid service records</text>
+
+  <rect x="220" y="200" width="150" height="60" class="box" fill="#ffffff" />
+  <text x="295" y="228" text-anchor="middle" class="label">Poisoned Stream</text>
+  <text x="295" y="246" text-anchor="middle" class="sublabel">Contradictions / drift</text>
+
+  <!-- Evaluator Sidecar (Isolated) -->
+  <rect x="50" y="300" width="320" height="90" class="zone-eval" />
+  <text x="210" y="330" text-anchor="middle" class="title" fill="#dc2626">Isolated Ground-Truth Sidecar</text>
+  <text x="210" y="350" text-anchor="middle" class="sublabel">Stores true injection labels: record_id, injection_type</text>
+  <text x="210" y="370" text-anchor="middle" class="sublabel" font-weight="bold">STRICTLY ISOLATED FROM SENTRYSCAN AGENT</text>
+
+  <path d="M 125 170 L 125 200" class="arrow" />
+  <path d="M 295 170 L 295 200" class="arrow" />
+  <path d="M 295 260 L 295 300" class="arrow-red" />
+
+  <!-- Trusted Agent Processing Boundary -->
+  <rect x="440" y="30" width="380" height="390" class="zone-trusted" />
+  <text x="630" y="58" text-anchor="middle" class="title" fill="#15803d">Trusted SentryScan Boundary</text>
+  <text x="630" y="76" text-anchor="middle" class="sublabel">Sense, Verify, Deliberate, Actuate</text>
+
+  <rect x="470" y="100" width="320" height="65" class="box" fill="#ffffff" />
+  <text x="630" y="126" text-anchor="middle" class="label">Parser &amp; Sanitizer Sensor</text>
+  <text x="630" y="146" text-anchor="middle" class="sublabel">Rejects malformed JSON; quotes untrusted strings</text>
+
+  <rect x="470" y="195" width="320" height="65" class="box" fill="#ffffff" />
+  <text x="630" y="222" text-anchor="middle" class="label">Data-Level Integrity Checker</text>
+  <text x="630" y="242" text-anchor="middle" class="sublabel">Detects freshness, rate, and schema drift</text>
+
+  <rect x="470" y="290" width="320" height="100" class="box" fill="#ffffff" />
+  <text x="630" y="318" text-anchor="middle" class="label">Reflex Rule Engine &amp; Finding Actuator</text>
+  <text x="630" y="340" text-anchor="middle" class="sublabel">Evaluates explicit rules $\to$ emits Finding records</text>
+  <text x="630" y="362" text-anchor="middle" class="sublabel">Commits to single-writer event recorder (monotonic seq)</text>
+
+  <!-- Across Boundary Connections -->
+  <path d="M 200 230 L 470 132" class="arrow" />
+  <path d="M 370 230 L 470 132" class="arrow" />
+  <path d="M 630 165 L 630 195" class="arrow" />
+  <path d="M 630 260 L 630 290" class="arrow" />
+</svg>
