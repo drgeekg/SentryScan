@@ -106,23 +106,9 @@ def build_analyst_graph(
         new_plan = deliberator.deliberate_and_plan(beliefs)
 
         now_iso = clk.now_iso()
-        if old_plan is not None and not old_plan.is_finished():
-            # Abandon old intention with explicit rationale
-            old_plan.abandon(replan_reason)
-            is_mat = "Material" in replan_reason
-            record = ReconsiderationRecord(
-                timestamp_utc=now_iso,
-                trigger="MATERIAL_BELIEF_UPDATE" if is_mat else "PLAN_SUPERSEDED",
-                material_change=is_mat,
-                reconsidered=True,
-                previous_intention_id=old_plan.intention_id,
-                previous_desire_type=old_plan.desire_type.value,
-                new_intention_id=new_plan.intention_id if new_plan else None,
-                new_desire_type=new_plan.desire_type.value if new_plan else None,
-                replan_reason=replan_reason,
-            )
-            history.append(record)
-        elif old_plan is None and new_plan is not None:
+        is_mat = "Material" in replan_reason
+
+        if old_plan is None and new_plan is not None:
             # Initial intention adoption
             record = ReconsiderationRecord(
                 timestamp_utc=now_iso,
@@ -131,6 +117,28 @@ def build_analyst_graph(
                 reconsidered=False,
                 previous_intention_id=None,
                 previous_desire_type=None,
+                new_intention_id=new_plan.intention_id,
+                new_desire_type=new_plan.desire_type.value,
+                replan_reason=replan_reason,
+            )
+            history.append(record)
+        elif old_plan is not None and new_plan is not None:
+            # Reconsidering / transitioning intention
+            if not old_plan.is_finished():
+                old_plan.abandon(replan_reason)
+                trigger = "MATERIAL_BELIEF_UPDATE" if is_mat else "PLAN_SUPERSEDED"
+                reconsidered = True
+            else:
+                trigger = "PLAN_COMPLETED"
+                reconsidered = False
+
+            record = ReconsiderationRecord(
+                timestamp_utc=now_iso,
+                trigger=trigger,
+                material_change=is_mat,
+                reconsidered=reconsidered,
+                previous_intention_id=old_plan.intention_id,
+                previous_desire_type=old_plan.desire_type.value,
                 new_intention_id=new_plan.intention_id,
                 new_desire_type=new_plan.desire_type.value,
                 replan_reason=replan_reason,
