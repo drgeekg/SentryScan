@@ -1,0 +1,32 @@
+# Assignment 4.2 Acceptance Checklist
+
+- [x] Structured vulnerability knowledge ontology implemented under `src/sentryscan/knowledge/`:
+  - `VulnerabilityRecord`, `EnrichmentResult`, `KnowledgeSource` in `models.py`
+  - Canonical ontology repository in `ontology.py` (`VulnerabilityKnowledgeBase`)
+  - Seeded offline ontology fixture in `fixtures/knowledge/vulnerability_ontology.json`
+- [x] Read-only National Vulnerability Database (NVD) CVE API adapter implemented in `src/sentryscan/knowledge/nvd_adapter.py`:
+  - Pydantic models for NVD 2.0 API response validation (`NVDResponse`, `NVDCveData`, etc.)
+  - CVSS score derivation and categorical severity mapping
+  - Strict compliance with SentryScan safety boundary (read-only enrichment, zero target probing)
+- [x] Persistent and memory-backed cache implemented in `src/sentryscan/knowledge/cache.py`:
+  - Configurable TTL expiration and disk serialization
+  - Hit/miss operational metrics tracking
+- [x] Resilient multi-tiered enrichment coordinator implemented in `src/sentryscan/knowledge/enricher.py`:
+  - Tiered resolution: Cache -> NVD API -> Offline Ontology Fixture
+  - Bounded exponential backoff retry policy on network timeouts
+  - Safe offline fallback guaranteeing zero uncaught exceptions
+- [x] Knowledge updates fed into agent beliefs and BDI replanning:
+  - `AnalystAgent` integrates `KnowledgeEnricher` in `src/sentryscan/agents/analyst.py`
+  - Contextual CVE severity escalation triggers `MATERIAL_BELIEF_UPDATE`
+  - LangGraph deliberative workflow reconsiders, preempts routine audit intention, and enforces host quarantine
+- [x] Comprehensive test suites implemented:
+  - Ontology & validation unit tests in `tests/unit/test_knowledge_ontology.py`
+  - NVD API adapter unit tests in `tests/unit/test_nvd_adapter.py`
+  - Cache, retry, and fallback unit tests in `tests/unit/test_knowledge_cache.py`
+  - End-to-end BDI escalation integration tests in `tests/integration/test_knowledge_enrichment.py`
+- [x] Multi-cycle demonstration script implemented in `demos/demo_assignment_4_2.py` generating:
+  - `evidence/run_log.txt`
+  - `evidence/knowledge_adaptation_log.md`
+  - `evidence/trace_excerpt.jsonl`
+- [x] Full test suite (120/120 tests) passing with 0 failures and 0 warnings.
+- [x] Ruff lint checks passing cleanly with 0 errors across entire repository.

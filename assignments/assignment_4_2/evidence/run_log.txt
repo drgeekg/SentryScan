@@ -1,0 +1,52 @@
+================================================================================
+ SentryScan Milestone 4.2 -- Vulnerability Knowledge & External Enrichment 
+================================================================================
+
+[1] Cycle 1: Baseline Telemetry Perception
+    - Target Host:     192.0.2.10 (sim-host-001)
+    - Observed Alert:  fnd-001 (Severity: INFO, Service: http)
+    - Generated Action: NOMINAL_MONITORING (Cadence: 250ms)
+    - Quarantine Flag:  False
+    - Active Intention: AUDIT_ASSIGNED_HOSTS
+
+[2] Cycle 2: Offline Knowledge Enrichment & Severity Escalation
+    - Target Host:     sim-host-007
+    - Observed Alert:  fnd-002 (Severity: MEDIUM, Service: log4j, Banner: Log4j 2.14.1)
+    - Knowledge Query: Matching against local vulnerability ontology...
+    - Enriched CVE:     CVE-2021-44228 (CVSS: 10.0)
+    - Severity Shift:   MEDIUM --> CRITICAL (Escalated: True)
+    - Knowledge Source: FALLBACK_FIXTURE
+    - Intention Shift:  Adopting CONTAIN_COMPROMISED_HOSTS
+    - Autonomous Exec:  DEEP_INSPECTION (Cadence: 50ms, Quarantine: True)
+    - Policy Rationale: Knowledge escalated (CVE-2021-44228, CVSS 10.0): Critical finding on sim-host-007. Escalating to immediate high-frequency deep inspection with host quarantine.
+
+[3] Cycle 3: Online NVD API Resolution & Dynamic Caching
+    - Target Host:     sim-host-008
+    - Observed Alert:  fnd-003 (Severity: LOW, CVE: CVE-2024-3094)
+    - External Query:  Requesting NIST NVD 2.0 API endpoint...
+    - NVD HTTP Calls:   2 (Endpoint verified)
+    - Enriched CVE:     CVE-2024-3094 (CVSS: 10.0)
+    - Escalation:       LOW --> CRITICAL
+    - Knowledge Source: NVD_API
+    - Autonomous Exec:  Quarantine=True, Cadence=50ms
+    - Cache State:      Entry cached with TTL 3600s (Size: 2)
+
+[4] Cycle 4: Cache-Hit Fast Path (Zero Network Overhead)
+    - Target Host:     sim-host-009
+    - Observed Alert:  fnd-004 (Severity: LOW, CVE: CVE-2024-3094)
+    - Knowledge Query: Checking cache before issuing HTTP call...
+    - Additional Calls: 0 (Network bypassed)
+    - Knowledge Source: CACHE (Cache Hit!)
+    - Cache Metrics:    Hits=1, Ratio=0.3333
+
+[5] Cycle 5: Resilient Retry & Offline Fixture Fallback
+    - Target Host:     sim-host-011
+    - Observed Alert:  fnd-005 (Severity: LOW, CVE: CVE-2021-41773)
+    - Network State:   SIMULATED NVD OUTAGE (503 Service Unavailable)
+    - Retry Status:     Completed 2 retries with exponential backoff
+    - Fallback Status:  Fell back safely to local knowledge fixture
+    - Enriched CVE:     CVE-2021-41773 (CVSS: 7.5)
+    - Escalation:       LOW --> HIGH
+    - Knowledge Source: FALLBACK_FIXTURE
+    - Autonomous Exec:  DEEP_INSPECTION (Cadence: 100ms)
+

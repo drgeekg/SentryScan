@@ -13,6 +13,8 @@ from sentryscan.common.id_generator import IdGenerator
 from sentryscan.contracts.message import Message, Performative
 from sentryscan.graphs.analyst_graph import build_analyst_graph
 from sentryscan.graphs.analyst_state import AnalystGraphState, ReconsiderationRecord
+from sentryscan.knowledge.enricher import KnowledgeEnricher
+from sentryscan.knowledge.models import EnrichmentResult
 from sentryscan.transport.interface import Transport
 from sentryscan.transport.socket_transport import TCPSocketServer
 
@@ -27,10 +29,12 @@ class AnalystAgent:
         agent_id: str = "analyst-agent-01",
         clock: Clock | None = None,
         id_gen: IdGenerator | None = None,
+        enricher: KnowledgeEnricher | None = None,
     ) -> None:
         self.agent_id = agent_id
         self.clock = clock if clock is not None else SystemClock()
         self.id_gen = id_gen if id_gen is not None else IdGenerator()
+        self.enricher = enricher if enricher is not None else KnowledgeEnricher()
         self.server: TCPSocketServer | None = None
 
         # BDI State
@@ -38,6 +42,10 @@ class AnalystAgent:
         self.active_intention: Intention | None = None
         self.reconsideration_history: list[ReconsiderationRecord] = []
         self._beliefs_compat: dict[str, dict[str, Any]] = {}
+
+        # Knowledge enrichment tracking
+        self.last_enrichment: EnrichmentResult | None = None
+        self.enrichment_history: list[EnrichmentResult] = []
 
         # Deliberative LangGraph workflow
         self.graph = build_analyst_graph(clock=self.clock, id_gen=self.id_gen)
@@ -77,11 +85,41 @@ class AnalystAgent:
         """Analyze alert, route through BDI Analyst graph, and emit PARAMS_UPDATE."""
         payload = msg.payload
         target_host = payload.get("target_host") or payload.get("host_id") or "unknown-host"
-        severity = str(payload.get("severity", "LOW")).upper()
+        orig_severity = str(payload.get("severity", "LOW")).upper()
+        severity = orig_severity
         finding_id = payload.get("finding_id", "unknown-finding")
         rule_id = payload.get("rule_id", "unknown-rule")
+        service = payload.get("service")
+        banner = payload.get("banner")
+        cve_id = payload.get("cve_id")
 
-        # Route through the deliberative BDI LangGraph workflow
+        # 1. External Knowledge Enrichment
+        enrichment: EnrichmentResult | None = None
+        if self.enricher is not None:
+            enrichment = self.enricher.enrich_finding(
+                finding_id=finding_id,
+                target_host=target_host,
+                original_severity=orig_severity,
+                service=service,
+                banner=banner,
+                cve_id=cve_id,
+                extra_details=payload,
+            )
+            self.last_enrichment = enrichment
+            self.enrichment_history.append(enrichment)
+            if enrichment.escalated:
+                logger.info(
+                    "[%s] Knowledge enrichment escalated %s (%s) from %s to %s (CVSS %.1f)",
+                    self.agent_id,
+                    target_host,
+                    enrichment.cve_id,
+                    orig_severity,
+                    enrichment.enriched_severity,
+                    enrichment.cvss_score or 0.0,
+                )
+                severity = enrichment.enriched_severity
+
+        # 2. Route through the deliberative BDI LangGraph workflow
         initial_state: AnalystGraphState = {
             "beliefs": self.belief_base,
             "active_intention": self.active_intention,
@@ -92,6 +130,11 @@ class AnalystAgent:
                 "rule_id": rule_id,
                 "severity": severity,
                 "priority_ports": payload.get("priority_ports"),
+                "cve_id": enrichment.cve_id if enrichment else cve_id,
+                "cvss_score": enrichment.cvss_score if enrichment else None,
+                "enrichment_source": (
+                    enrichment.source.value if enrichment else None
+                ),
             },
         }
 
@@ -132,14 +175,39 @@ class AnalystAgent:
                     "Tightening sampling window and monitoring core exposure ports."
                 )
 
+        if enrichment and enrichment.escalated and enrichment.cve_id:
+            rationale = (
+                f"Knowledge escalated ({enrichment.cve_id}, "
+                f"CVSS {enrichment.cvss_score}): {rationale}"
+            )
+
         # Update backwards-compatible dictionary view
         self._beliefs_compat[target_host] = {
             "severity": severity,
             "finding_id": finding_id,
             "rule_id": rule_id,
+            "cve_id": enrichment.cve_id if enrichment else cve_id,
+            "cvss_score": enrichment.cvss_score if enrichment else None,
             "last_assessed": self.clock.now_iso(),
             "quarantined": quarantine_flag,
         }
+
+        reply_payload: dict[str, Any] = {
+            "target_host": target_host,
+            "correlated_finding_id": finding_id,
+            "action": action,
+            "scan_interval_ms": scan_interval_ms,
+            "priority_ports": priority_ports,
+            "quarantine_flag": quarantine_flag,
+            "rationale": rationale,
+        }
+
+        if enrichment and enrichment.cve_id:
+            reply_payload["cve_id"] = enrichment.cve_id
+            reply_payload["cvss_score"] = enrichment.cvss_score
+            reply_payload["enriched_severity"] = enrichment.enriched_severity
+            reply_payload["escalated"] = enrichment.escalated
+            reply_payload["knowledge_source"] = enrichment.source.value
 
         return Message(
             message_id=self.id_gen.next_id("message"),
@@ -150,15 +218,7 @@ class AnalystAgent:
             timestamp_utc=self.clock.now_iso(),
             nonce=self.id_gen.seeded_token(16),
             task_id=msg.task_id,
-            payload={
-                "target_host": target_host,
-                "correlated_finding_id": finding_id,
-                "action": action,
-                "scan_interval_ms": scan_interval_ms,
-                "priority_ports": priority_ports,
-                "quarantine_flag": quarantine_flag,
-                "rationale": rationale,
-            },
+            payload=reply_payload,
         )
 
     def _handle_state_sync(self, msg: Message) -> Message:
