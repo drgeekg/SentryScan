@@ -1,0 +1,133 @@
+"""Unit tests for the LangGraph supervisor workflow and worker Send fan-out."""
+
+from __future__ import annotations
+
+from sentryscan.common.clock import FakeClock
+from sentryscan.common.id_generator import IdGenerator
+from sentryscan.contracts.message import Performative
+from sentryscan.graphs.supervisor import build_supervisor_graph
+from sentryscan.llm.deterministic import DeterministicLLMProvider
+
+
+def _build_test_batches():
+    return {
+        "batch-01": [
+            {
+                "record_id": "tel-000001",
+                "host_id": "sim-host-001",
+                "ip": "192.0.2.10",
+                "port": 22,
+                "service": "ssh",
+                "banner": "SSH-2.0-OpenSSH_7.2p2",
+                "auth_mode": "required",
+                "tls_version": None,
+                "generated_at": "2026-10-21T07:00:00Z",
+            },
+            {
+                "record_id": "tel-000002",
+                "host_id": "sim-host-002",
+                "ip": "192.0.2.11",
+                "port": 80,
+                "service": "http",
+                "banner": "Apache/2.4.49",  # Matches RULE-005 critical
+                "auth_mode": "unknown",
+                "tls_version": None,
+                "generated_at": "2026-10-21T07:00:00Z",
+            },
+        ],
+        "batch-02": [
+            {
+                "record_id": "tel-000003",
+                "host_id": "sim-host-003",
+                "ip": "192.0.2.12",
+                "port": 23,
+                "service": "telnet",
+                "banner": "Linux telnetd",
+                "auth_mode": "default",  # Matches RULE-001 & RULE-004
+                "tls_version": None,
+                "generated_at": "2026-10-21T07:00:00Z",
+            },
+            {
+                "record_id": "tel-000004",
+                "host_id": "sim-host-004",
+                "ip": "192.0.2.13",
+                "port": 443,
+                "service": "https",
+                "banner": "nginx/1.18.0",
+                "auth_mode": "required",
+                "tls_version": "TLSv1.0",  # Matches RULE-003
+                "generated_at": "2026-10-21T07:00:00Z",
+            },
+        ],
+    }
+
+
+def test_supervisor_graph_awarded_and_fan_out():
+    clock = FakeClock("2026-10-21T07:00:00Z")
+    id_gen = IdGenerator(seed=42)
+    llm = DeterministicLLMProvider()
+
+    app = build_supervisor_graph(
+        clock=clock,
+        id_gen=id_gen,
+        llm_provider=llm,
+        max_rounds=3,
+    )
+
+    initial_state = {
+        "run_id": "run-test-graph-01",
+        "task_id": "task-alloc-01",
+        "batches": _build_test_batches(),
+        "constraints": {"max_cost": 100.0, "max_time": 500.0},
+        "messages": [],
+        "findings": [],
+        "errors": [],
+    }
+
+    final_state = app.invoke(initial_state)
+
+    assert final_state["phase"] == "COMPLETED"
+    assert final_state["winning_proposal"] is not None
+    assert final_state["awarded_proposer"] in ("scout-agent", "triage-agent")
+    assert len(final_state["awarded_batch_ids"]) > 0
+
+    # Ensure findings were discovered and aggregated across workers
+    assert len(final_state["findings"]) > 0
+    finding_rules = {f.rule_id for f in final_state["findings"]}
+    # RULE-001 (Telnet) and/or RULE-003 (Deprecated TLS) should be triggered
+    assert "RULE-001" in finding_rules or "RULE-003" in finding_rules
+
+    # Check that worker TASK_RESULT messages are present in accumulated messages
+    worker_messages = [
+        m for m in final_state["messages"] if m.performative == Performative.TASK_RESULT
+    ]
+    assert len(worker_messages) == len(final_state["awarded_batch_ids"])
+
+
+def test_supervisor_graph_unresolved_termination():
+    clock = FakeClock("2026-10-21T07:00:00Z")
+    id_gen = IdGenerator(seed=42)
+
+    app = build_supervisor_graph(
+        clock=clock,
+        id_gen=id_gen,
+        max_rounds=2,
+    )
+
+    # Impossible budget constraint
+    initial_state = {
+        "run_id": "run-test-graph-02",
+        "task_id": "task-alloc-02",
+        "batches": _build_test_batches(),
+        "constraints": {"max_cost": 0.0001, "max_time": 0.0001},
+        "messages": [],
+        "findings": [],
+        "errors": [],
+    }
+
+    final_state = app.invoke(initial_state)
+
+    assert final_state["phase"] == "UNRESOLVED"
+    assert final_state["winning_proposal"] is None
+    assert len(final_state["findings"]) == 0  # No workers fanned out
+    assert len(final_state["errors"]) > 0
