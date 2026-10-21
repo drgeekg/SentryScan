@@ -1,0 +1,39 @@
+==============================================================================
+ SentryScan Milestone 4.1 -- Deliberative BDI Modelling & Reconsideration 
+==============================================================================
+
+[1] Step 1: Initial Perception & Intention Adoption
+    - Target Host: 192.0.2.10 (sim-host-001)
+    - Finding:     fnd-info-001 (Severity: INFO)
+    [+] Initial Desire Selected:    AUDIT_ASSIGNED_HOSTS
+    [+] Initial Intention ID:       intention-000001
+    [+] Action Emitted:             NOMINAL_MONITORING (250ms)
+    [+] Quarantined:                False
+
+[2] Step 2: Routine Telemetry (Non-Material Update)
+    - Target Host: 192.0.2.20 (sim-host-002)
+    - Finding:     fnd-low-002 (Severity: LOW)
+    [+] Current Intention Retained: intention-000001 (AUDIT_ASSIGNED_HOSTS)
+    [+] Replan Triggered:           NO (non-material severity)
+    [+] Action Emitted:             NOMINAL_MONITORING (500ms)
+
+[3] Step 3: Material Belief Revision (Injected Critical Threat)
+    - Target Host: sim-host-007
+    - Finding:     fnd-sqli-rce-007 (Severity: CRITICAL)
+    - Ports:       [80, 443, 22, 8080]
+    [!] RECONSIDERATION TRIGGERED:  YES (Material escalation to CRITICAL)
+    [!] Previous Intention Abandoned: intention-000001 (AUDIT_ASSIGNED_HOSTS)
+    [*] Emergency Intention Adopted:  intention-000002 (CONTAIN_COMPROMISED_HOSTS)
+    [*] Target Host:                  sim-host-007
+    [*] Action Emitted:               DEEP_INSPECTION (50ms)
+    [*] Quarantine Flag:              True
+    [*] Priority Ports:               [80, 443, 22, 23, 3389, 8080]
+    [*] Rationale:                    Critical finding on sim-host-007. Escalating to immediate high-frequency deep inspection with host quarantine.
+
+[4] Step 4: Post-Quarantine Deliberative Shift to Forensic Triage
+    - Host sim-host-007 is now quarantined.
+    - Containment desire satisfied; deliberator shifts to forensic triage.
+    [*] New Desire Selected:          SURFACE_CRITICAL_FINDINGS
+    [*] New Intention ID:             intention-000003
+    [*] Action Emitted:               DEEP_INSPECTION (100ms)
+    [*] Rationale:                    High-severity finding on sim-host-007. Tightening sampling window and monitoring core exposure ports.
