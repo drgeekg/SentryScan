@@ -84,8 +84,8 @@ SentryScan combines classical deliberative agent paradigms with modern multi-age
 | **v0.4** | **Released** | Distributed Transport | Length-prefixed binary TCP socket transport, Transport interface with in-process adapter, autonomous Analyst agent with adaptive PARAMS_UPDATE |
 | **v0.5** | **Released** | Multi-Agent Coordination | LangGraph supervisor graph, Scout and Triage roles, Contract-Net negotiation (`CFP` $\to$ `PROPOSE` $\to$ `ACCEPT`), subagent fan-out via `Send` |
 | **v0.6** | **Released** | Utility Optimization | Normalized multi-attribute utility formula, hard constraint filtering, exhaustive optimality verification, weight sensitivity analysis |
-| **v0.7** | **Active** | Deliberative BDI | Epistemic Beliefs, Desires, and committed Intentions; autonomous intention reconsideration upon critical finding updates |
-| **v0.8** | Planned | Context Enrichment | Vulnerability knowledge ontology, read-only NVD CVE adapter with resilient caching and offline fallback |
+| **v0.7** | **Released** | Deliberative BDI | Epistemic Beliefs, Desires, and committed Intentions; LangGraph Analyst workflow; autonomous intention reconsideration upon critical finding updates |
+| **v0.8** | **Active** | Context Enrichment | Vulnerability knowledge ontology, read-only NVD CVE adapter with resilient caching and offline fallback |
 | **v0.9** | Planned | Cryptographic Security | Ed25519 message signatures, canonical RFC 8785 envelope bytes, bounded anti-replay nonce cache, security gate |
 | **v1.0** | Planned | Capstone & UI | Full supervisor graph integration, SQLite entity persistence, FastAPI WebSocket gateway, live browser visualization |
 
@@ -112,6 +112,7 @@ sentryscan/
 │   ├── sensors/                   # Stream parsers & telemetry normalizers
 │   ├── actuators/                 # Finding publishers & reporting tools
 │   ├── agents/                    # Reflex and deliberative agent implementations
+│   ├── bdi/                       # Epistemic beliefs, desires, intentions & deliberator
 │   ├── negotiation/               # Contract-Net negotiation & bid scoring
 │   ├── optimizer/                 # Multi-attribute utility engine, constraint filter & weights
 │   ├── graphs/                    # LangGraph supervisor workflow & typed state
