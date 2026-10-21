@@ -1,6 +1,7 @@
 """Belief-Desire-Intention (BDI) deliberative modeling package."""
 
 from sentryscan.bdi.beliefs import BeliefBase, FleetBelief, HostBelief, HostStatus
+from sentryscan.bdi.deliberation import BDIDeliberator
 from sentryscan.bdi.desires import Desire, DesireType
 from sentryscan.bdi.intentions import (
     Intention,
@@ -10,6 +11,7 @@ from sentryscan.bdi.intentions import (
 )
 
 __all__ = [
+    "BDIDeliberator",
     "BeliefBase",
     "HostBelief",
     "HostStatus",
