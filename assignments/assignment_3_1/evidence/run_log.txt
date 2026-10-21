@@ -1,0 +1,32 @@
+==============================================================================
+ SentryScan Milestone 3.1 -- Multi-Agent Coordination & Negotiation 
+==============================================================================
+
+[1] Starting Multi-Turn Contract-Net Negotiation Session...
+    Protocol: CFP -> PROPOSE -> COUNTERPROPOSE -> ACCEPT / REJECT -> CONFIRM
+    Initial Constraints: Cost <= 10.5, Time <= 250.0 ms
+
+    [+] Outcome: CONSENSUS_REACHED in Round 2
+    [+] Winner:  scout-agent
+    [+] Batches: ['batch-03']
+    [+] Cost:    11.0
+    [+] Cover:   0.2
+    [+] Reason:  Coverage plan selecting 1 batches covering 1/5 unique hosts.
+
+[2] Executing LangGraph Supervisor Graph with Runtime Worker Fan-Out...
+    [+] Graph Phase:         COMPLETED
+    [+] Winning Proposer:    scout-agent
+    [+] Batches Fanned-Out:  ['batch-01', 'batch-02', 'batch-03']
+    [+] Aggregated Findings: 6 findings discovered
+        - [CRITICAL] fnd-000001: Known Critical Remote Vulnerability Banner Detected (sim-host-002:80)
+        - [HIGH] fnd-000002: Unencrypted Telnet Management Protocol Exposed (sim-host-003:23)
+        - [CRITICAL] fnd-000003: Default Administrative Credentials Active on Service (sim-host-003:23)
+        - [HIGH] fnd-000004: Deprecated Cryptographic Transport Protocol (TLS/SSL) (sim-host-004:443)
+        - [MEDIUM] fnd-000005: Unauthenticated Anonymous FTP Service Exposed (sim-host-005:21)
+        - [CRITICAL] fnd-000006: Known Critical Remote Vulnerability Banner Detected (sim-host-005:21)
+
+[3] Testing Bounded UNRESOLVED Termination under Impossible Constraints...
+    [+] Status: UNRESOLVED after 2 rounds (No loop)
+
+[4] Verifying Determinism Contract (Exact Identity with LLM Off)...
+    [+] Deterministic trace identical across runs (0 drift verified).
