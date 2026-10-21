@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import threading
 import time
-from dataclasses import dataclass, field
+from dataclasses import dataclass
 
 
 @dataclass
@@ -28,7 +28,7 @@ class SharedFleetStats:
         self.malformed_records: int = 0
         self.suspect_records: int = 0
         self.findings_count: int = 0
-        self.per_host_counts: dict[str, int] = field(default_factory=dict)
+        self.per_host_counts: dict[str, int] = {}
 
     def record_percept_locked(
         self,
@@ -51,9 +51,7 @@ class SharedFleetStats:
             self.findings_count += findings_delta
 
             if host_id:
-                current = getattr(self, "per_host_counts", None) or {}
-                current[host_id] = current.get(host_id, 0) + 1
-                self.per_host_counts = current
+                self.per_host_counts[host_id] = self.per_host_counts.get(host_id, 0) + 1
 
     def record_percept_unlocked(self) -> None:
         """Non-atomic update without lock, vulnerable to lost updates under high concurrency."""

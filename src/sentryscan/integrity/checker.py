@@ -55,7 +55,10 @@ class IntegrityChecker:
         self._device_baseline_service: dict[str, set[str]] = {}
 
     def _hash_payload(self, record: TelemetryRecord) -> str:
-        content = f"{record.host_id}:{record.port}:{record.service}:{record.banner}"
+        content = (
+            f"{record.host_id}:{record.port}:{record.service}:"
+            f"{record.banner}:{record.generated_at}"
+        )
         return hashlib.sha256(content.encode("utf-8")).hexdigest()
 
     def check_record(self, record: TelemetryRecord) -> list[IntegrityFlag]:
@@ -152,12 +155,21 @@ class IntegrityChecker:
                 )
             )
 
-        # Case B: Service / Port / Banner mismatch (e.g. port 22 banner claims HTTP)
+        # Case B: Service / Banner mismatch (HTTP banner on non-HTTP service)
         banner_lower = record.banner.lower()
-        if (
-            record.port == 22
-            and record.service.lower() == "ssh"
-            and "http/1.1" in banner_lower
+        non_http_services = {
+            "ssh",
+            "postgresql",
+            "mysql",
+            "telnet",
+            "dns",
+            "wireguard",
+            "ftp",
+            "rdp",
+            "smb",
+        }
+        if record.service.lower() in non_http_services and (
+            "http/1.1" in banner_lower or "server: apache" in banner_lower
         ):
             flags.append(
                 IntegrityFlag(
@@ -165,7 +177,12 @@ class IntegrityChecker:
                     check_id="INT-003",
                     reason_code=IntegrityReasonCode.FIELD_CONTRADICTION,
                     confidence=0.95,
-                    details={"error": "Port 22 SSH banner contains HTTP web response"},
+                    details={
+                        "error": (
+                            f"Service {record.service} on port {record.port} "
+                            "returned HTTP web banner"
+                        )
+                    },
                 )
             )
 
