@@ -80,8 +80,8 @@ SentryScan combines classical deliberative agent paradigms with modern multi-age
 |---|---|---|---|
 | **v0.1** | **Released** | Core Foundations | Monorepo baseline, CI/CD pipeline, secret scanning, reproducible packager, High-Level Design (HLD v1.2), formal PEAS & environment model |
 | **v0.2** | **Released** | Reflex Reasoner | Injectable clock & deterministic ID generator, telemetry contracts, explicit condition-action rules, JSONL trace recorder, sense-parse-decide-act loop |
-| **v0.3** | **Active** | Concurrency & Fleet | Multi-device fleet simulator, background monitor daemon, thread-safe queues, data-integrity checker, isolated ground-truth sidecar |
-| **v0.4** | Planned | Distributed Transport | Two-process architecture (Core + Analyst), length-prefixed TCP socket transport, autonomous Analyst agent |
+| **v0.3** | **Released** | Concurrency & Fleet | Multi-device fleet simulator, background monitor daemon, thread-safe queues, data-integrity checker, isolated ground-truth sidecar |
+| **v0.4** | **Active** | Distributed Transport | Two-process architecture (Core + Analyst), length-prefixed TCP socket transport, autonomous Analyst agent |
 | **v0.5** | Planned | Multi-Agent Coordination | LangGraph supervisor graph, Scout and Triage roles, Contract-Net negotiation (`CFP` $\to$ `PROPOSE` $\to$ `ACCEPT`), subagent fan-out via `Send` |
 | **v0.6** | Planned | Utility Optimization | Normalized multi-attribute utility formula, hard constraint filtering, exhaustive optimality verification |
 | **v0.7** | Planned | Deliberative BDI | Epistemic Beliefs, Desires, and committed Intentions; autonomous intention reconsideration upon critical finding updates |
@@ -157,6 +157,7 @@ ruff check .
 For audit and evaluation purposes, each major development milestone maintains a self-contained case study package inside [`assignments/`](assignments/):
 - **Milestone 1.1:** [Agent Foundations & PEAS Taxonomy](assignments/assignment_1_1/README.md) — Comprehensive technical specification ([PDF](assignments/assignment_1_1/deliverables/SentryScan_Design_Specification.pdf)), 7-dimensional environment classification, and Unit-1 OOP vs. Agent comparative analysis.
 - **Milestone 1.2:** [Rule-Based Reflex Reasoner](assignments/assignment_1_2/README.md) — Executable Sense-Parse-Decide-Act loop, explicit condition-action rule table, malformed payload quarantine, unmatched record auditing, and monotonic `seq` JSONL event recorder.
+- **Milestone 2.1:** [Concurrency & Data Integrity](assignments/assignment_2_1/README.md) — Multi-device simulated fleet in RFC 5737 space, background monitor daemon with non-blocking heartbeat, thread-safe queue manager, lost updates race condition proof, controlled poisoning mutators with isolated ground-truth sidecar, and deterministic data-level integrity checker.
 
 To package any tagged milestone into an immutable, reproducible archive:
 ```bash
