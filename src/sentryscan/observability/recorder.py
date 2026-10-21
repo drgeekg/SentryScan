@@ -1,20 +1,24 @@
-"""Single-writer audit event recorder with monotonic sequence numbers."""
+"""Single-writer audit event recorder with monotonic sequence numbers and dual sinks."""
 
 from __future__ import annotations
 
 import threading
 from pathlib import Path
-from typing import Any
+from typing import TYPE_CHECKING, Any
 
 from sentryscan.common.clock import Clock, SystemClock
 from sentryscan.contracts.events import AgentEvent, EventStatus, EventType
+
+if TYPE_CHECKING:
+    from sentryscan.storage.store import SQLiteRunStore
 
 
 class EventRecorder:
     """Thread-safe, single-writer event persistence component.
 
     Assigns gap-free monotonic sequence numbers (`seq`) and appends events
-    to an authoritative JSONL trace file.
+    to an authoritative JSONL trace file, with optional real-time persistence
+    to a SQLite run store.
     """
 
     def __init__(
@@ -22,11 +26,13 @@ class EventRecorder:
         run_id: str,
         output_path: Path | str,
         clock: Clock | None = None,
+        sqlite_store: SQLiteRunStore | None = None,
     ) -> None:
         self.run_id = run_id
         self.output_path = Path(output_path)
         self.output_path.parent.mkdir(parents=True, exist_ok=True)
         self.clock = clock if clock is not None else SystemClock()
+        self.sqlite_store = sqlite_store
 
         self._lock = threading.Lock()
         self._seq_counter: int = 0
@@ -46,7 +52,7 @@ class EventRecorder:
         reason_code: str | None = None,
         details: dict[str, Any] | None = None,
     ) -> AgentEvent:
-        """Create, sequence, persist, and return a new AgentEvent."""
+        """Create, sequence, persist to dual sinks, and return a new AgentEvent."""
         with self._lock:
             self._seq_counter += 1
             seq = self._seq_counter
@@ -69,10 +75,14 @@ class EventRecorder:
                 details=details or {},
             )
 
-            # Serialize to JSON line and flush
+            # 1. Sink: Append to authoritative JSONL trace
             json_line = event.model_dump_json()
             self._file.write(json_line + "\n")
             self._file.flush()
+
+            # 2. Sink: Persist to SQLite run store if enabled
+            if self.sqlite_store is not None:
+                self.sqlite_store.save_event(event)
 
             self._events.append(event)
             return event

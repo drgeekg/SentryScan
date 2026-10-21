@@ -1,0 +1,23 @@
+# Assignment 5.2 — Rubric to Evidence Mapping
+
+**Course:** 21CSE525T — Agent Technology  
+**Student:** R Ganesh [RA2212704010031]  
+**Assignment:** Assignment 5.2 (Capstone Architecture, Web Dashboard & UI Orchestration)  
+**Date:** 2026-10-21  
+
+---
+
+## Evaluation Criteria & Implementation Evidence
+
+| Rubric Criterion | Implementation Component | Evidence Artifact | Status |
+|---|---|---|---|
+| **1. Supervisor Integration & Deliberative Quarantine** | [`src/sentryscan/graphs/supervisor.py`](../../src/sentryscan/graphs/supervisor.py), [`src/sentryscan/graphs/state.py`](../../src/sentryscan/graphs/state.py): Integrates `AnalystAgent` via signed envelopes; catches CRITICAL findings; executes host quarantine. | [`tests/unit/test_supervisor_graph.py`](../../tests/unit/test_supervisor_graph.py), [`evidence/run_log.txt`](evidence/run_log.txt) Step 3 | **PASSED** |
+| **2. Dual-Sink Persistence & SQLite Run Store** | [`src/sentryscan/storage/store.py`](../../src/sentryscan/storage/store.py), [`src/sentryscan/observability/recorder.py`](../../src/sentryscan/observability/recorder.py): Single-writer monotonic `seq` recorder sinks concurrently to JSONL trace and relational SQLite schema with indexed tables. | [`tests/unit/test_storage_store.py`](../../tests/unit/test_storage_store.py), [`tests/integration/test_capstone_parity_and_replay.py`](../../tests/integration/test_capstone_parity_and_replay.py) | **PASSED** |
+| **3. Strict 100% Event Parity Guarantee** | [`src/sentryscan/storage/store.py`](../../src/sentryscan/storage/store.py) (`verify_parity`): Verifies `count(SQLite) == count(JSONL)`, zero `seq` gaps ($\text{seq}_i = i$), and exact ID alignment. | [`evidence/capstone_verification_matrix.md`](evidence/capstone_verification_matrix.md) §1 & §2, [`evidence/run_log.txt`](evidence/run_log.txt) Step 4 | **PASSED** |
+| **4. Loopback REST & WebSocket Gateway** | [`src/sentryscan/dashboard_gateway/server.py`](../../src/sentryscan/dashboard_gateway/server.py): FastAPI server providing REST run inspection (`/api/runs/...`) and WebSocket event stream (`/ws/{run_id}`) with sequence-based backfill. | [`tests/unit/test_dashboard_gateway.py`](../../tests/unit/test_dashboard_gateway.py), [`tests/integration/test_capstone_parity_and_replay.py`](../../tests/integration/test_capstone_parity_and_replay.py) (`test_websocket_resync_by_sequence`) | **PASSED** |
+| **5. Prebuilt Web Dashboard (HTML5 Canvas)** | [`frontend/dist/index.html`](../../frontend/dist/index.html): Dark-mode cybersecurity SPA with 60fps HTML5 Canvas multi-agent particle network, real-time metrics, findings table, and live WebSocket log. Zero Node.js runtime required. | [`frontend/dist/index.html`](../../frontend/dist/index.html), [`src/sentryscan/dashboard_gateway/server.py`](../../src/sentryscan/dashboard_gateway/server.py) static mount | **PASSED** |
+| **6. Rich CLI Terminal Fallback Dashboard** | [`src/sentryscan/ui/rich_dashboard.py`](../../src/sentryscan/ui/rich_dashboard.py): Terminal UI rendering multi-panel layout with fleet status, active negotiation, findings table, and log stream using `rich`. | [`tests/unit/test_rich_dashboard.py`](../../tests/unit/test_rich_dashboard.py), [`main.py`](../../main.py) integration | **PASSED** |
+| **7. One-Command Capstone Runner** | [`src/sentryscan/capstone.py`](../../src/sentryscan/capstone.py), [`main.py`](../../main.py): Top-level executable entry point (`main.py --demo`) orchestrating synthetic fleet generation, negotiation, scanning, BDI quarantine, and parity audit. | [`tests/unit/test_capstone_runner.py`](../../tests/unit/test_capstone_runner.py), [`evidence/run_log.txt`](evidence/run_log.txt) | **PASSED** |
+| **8. Replay Consistency & Trace Reproducibility** | [`src/sentryscan/storage/store.py`](../../src/sentryscan/storage/store.py): Replay from recorded events reproduces identical aggregate counts and findings state without mutating underlying database. | [`tests/integration/test_capstone_parity_and_replay.py`](../../tests/integration/test_capstone_parity_and_replay.py) (`test_replay_consistency_without_mutation`, `test_capstone_determinism_across_runs`) | **PASSED** |
+| **9. Test Coverage & Code Quality** | Entire test suite across unit and integration tests: 149/149 passing (100%), 0 failures, 0 warnings. Ruff lint check passing cleanly (0 errors). | `pytest` and `ruff check .` verification | **PASSED** |
+| **10. Immutable Deliverable Packaging** | [`scripts/package_assignment.py`](../../scripts/package_assignment.py): Builds reproducible submission ZIP directly from Git tag `assignment-5.2` with SHA-256 checksum manifest. | `dist/SentryScan_assignment_5_2.zip` | **PASSED** |

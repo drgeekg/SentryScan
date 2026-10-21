@@ -1,0 +1,362 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>SentryScan Capstone Dashboard</title>
+  <style>
+    :root {
+      --bg: #0a0d14;
+      --card-bg: #121824;
+      --card-border: #1e293b;
+      --accent: #38bdf8;
+      --accent-glow: rgba(56, 189, 248, 0.2);
+      --critical: #ef4444;
+      --high: #f97316;
+      --medium: #facc15;
+      --low: #3b82f6;
+      --success: #10b981;
+      --text: #f1f5f9;
+      --text-muted: #94a3b8;
+    }
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, monospace;
+    }
+    body {
+      background-color: var(--bg);
+      color: var(--text);
+      padding: 20px;
+    }
+    header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      border-bottom: 1px solid var(--card-border);
+      padding-bottom: 15px;
+      margin-bottom: 20px;
+    }
+    h1 {
+      font-size: 1.5rem;
+      color: var(--accent);
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+    .badge {
+      padding: 4px 10px;
+      border-radius: 9999px;
+      font-size: 0.75rem;
+      font-weight: 600;
+      text-transform: uppercase;
+      background: var(--card-border);
+    }
+    .badge-live {
+      background: rgba(16, 185, 129, 0.2);
+      color: var(--success);
+      border: 1px solid var(--success);
+    }
+    .grid {
+      display: grid;
+      grid-template-columns: repeat(12, 1fr);
+      gap: 20px;
+    }
+    .card {
+      background: var(--card-bg);
+      border: 1px solid var(--card-border);
+      border-radius: 8px;
+      padding: 16px;
+    }
+    .col-3 { grid-column: span 3; }
+    .col-4 { grid-column: span 4; }
+    .col-6 { grid-column: span 6; }
+    .col-8 { grid-column: span 8; }
+    .col-12 { grid-column: span 12; }
+    .card-title {
+      font-size: 0.9rem;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+      color: var(--text-muted);
+      margin-bottom: 12px;
+    }
+    .stat-val {
+      font-size: 2rem;
+      font-weight: 700;
+      color: var(--text);
+    }
+    canvas {
+      width: 100%;
+      height: 260px;
+      background: #080b10;
+      border-radius: 6px;
+      border: 1px solid #1a2234;
+      display: block;
+    }
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      font-size: 0.85rem;
+    }
+    th {
+      text-align: left;
+      padding: 8px;
+      border-bottom: 1px solid var(--card-border);
+      color: var(--text-muted);
+    }
+    td {
+      padding: 8px;
+      border-bottom: 1px solid #1a2234;
+    }
+    .log-container {
+      height: 220px;
+      overflow-y: auto;
+      font-size: 0.8rem;
+      background: #080b10;
+      padding: 10px;
+      border-radius: 6px;
+    }
+    .log-row {
+      margin-bottom: 4px;
+      display: flex;
+      gap: 10px;
+    }
+    .log-seq {
+      color: var(--accent);
+      font-weight: 600;
+      min-width: 45px;
+    }
+    .log-type {
+      color: var(--text-muted);
+      min-width: 130px;
+    }
+    .quarantined {
+      color: var(--critical);
+      font-weight: 700;
+    }
+  </style>
+</head>
+<body>
+  <header>
+    <div>
+      <h1>SentryScan Autonomous SOC Gateway</h1>
+      <p style="color: var(--text-muted); font-size: 0.85rem;">
+        Deterministic Triage, Multi-Agent Coordination & Deliberative BDI Shielding
+      </p>
+    </div>
+    <div style="display: flex; gap: 10px; align-items: center;">
+      <span class="badge" id="run-badge">Run: --</span>
+      <span class="badge badge-live" id="status-badge">Connected</span>
+    </div>
+  </header>
+
+  <div class="grid">
+    <div class="card col-3">
+      <div class="card-title">Telemetry Events (Monotonic seq)</div>
+      <div class="stat-val" id="stat-events">0</div>
+    </div>
+    <div class="card col-3">
+      <div class="card-title">Vulnerabilities Detected</div>
+      <div class="stat-val" id="stat-findings" style="color: var(--high);">0</div>
+    </div>
+    <div class="card col-3">
+      <div class="card-title">Quarantined Hosts (BDI)</div>
+      <div class="stat-val" id="stat-quarantine" style="color: var(--critical);">0</div>
+    </div>
+    <div class="card col-3">
+      <div class="card-title">Security Gate Rejections</div>
+      <div class="stat-val" id="stat-security" style="color: var(--success);">0</div>
+    </div>
+
+    <!-- Agent Workflow & Live Particle Canvas -->
+    <div class="card col-8">
+      <div class="card-title">Multi-Agent Communication & Deliberation Canvas</div>
+      <canvas id="agentCanvas"></canvas>
+    </div>
+
+    <!-- Device Fleet & Posture -->
+    <div class="card col-4">
+      <div class="card-title">Synthetic Fleet & Posture</div>
+      <div id="fleet-container" style="height: 260px; overflow-y: auto;">
+        <table id="fleet-table">
+          <thead><tr><th>Host</th><th>Service</th><th>Posture</th></tr></thead>
+          <tbody></tbody>
+        </table>
+      </div>
+    </div>
+
+    <!-- Live Event Log -->
+    <div class="card col-12">
+      <div class="card-title">Real-Time Single-Writer Audit Stream (JSONL & SQLite Parity)</div>
+      <div class="log-container" id="log-list"></div>
+    </div>
+  </div>
+
+  <script>
+    let ws = null;
+    let events = [];
+    let findings = [];
+    let currentRunId = null;
+
+    async function init() {
+      try {
+        const runsRes = await fetch('/api/runs');
+        const runs = await runsRes.json();
+        if (runs.length > 0) {
+          currentRunId = runs[0].run_id;
+          document.getElementById('run-badge').innerText = 'Run: ' + currentRunId;
+          await loadInitialData(currentRunId);
+          connectWebSocket(currentRunId);
+        } else {
+          document.getElementById('run-badge').innerText = 'No Active Runs';
+        }
+      } catch (err) {
+        console.error('Failed to init dashboard:', err);
+      }
+    }
+
+    async function loadInitialData(runId) {
+      const [eventsRes, findingsRes, devicesRes] = await Promise.all([
+        fetch(`/api/runs/${runId}/events?limit=500`).then(r => r.json()),
+        fetch(`/api/runs/${runId}/findings`).then(r => r.json()),
+        fetch(`/api/runs/${runId}/devices`).then(r => r.json())
+      ]);
+
+      events = eventsRes;
+      findings = findingsRes;
+      updateStats();
+      renderFleet(devicesRes);
+      renderLogs();
+    }
+
+    function updateStats() {
+      document.getElementById('stat-events').innerText = events.length;
+      document.getElementById('stat-findings').innerText = findings.length;
+      const qCount = findings.filter(f => f.quarantined).length;
+      document.getElementById('stat-quarantine').innerText = qCount;
+    }
+
+    function renderFleet(devices) {
+      const tbody = document.querySelector('#fleet-table tbody');
+      tbody.innerHTML = '';
+      devices.forEach(d => {
+        const isQ = findings.some(f => f.host_id === d.host_id && f.quarantined);
+        const tr = document.createElement('tr');
+        tr.innerHTML = `<td><b>${d.host_id}</b><br><small style="color:var(--text-muted)">${d.ip}</small></td>` +
+                       `<td>${d.service}:${d.port}</td>` +
+                       `<td>${isQ ? '<span class="quarantined">QUARANTINED</span>' : '<span style="color:var(--success)">NOMINAL</span>'}</td>`;
+        tbody.appendChild(tr);
+      });
+    }
+
+    function renderLogs() {
+      const list = document.getElementById('log-list');
+      list.innerHTML = '';
+      events.slice(-50).reverse().forEach(e => {
+        const row = document.createElement('div');
+        row.className = 'log-row';
+        row.innerHTML = `<span class="log-seq">#${e.seq}</span>` +
+                        `<span class="log-type">[${e.event_type}]</span>` +
+                        `<span>${e.component}: status=${e.status} ${e.reason_code ? '(' + e.reason_code + ')' : ''}</span>`;
+        list.appendChild(row);
+      });
+    }
+
+    function connectWebSocket(runId) {
+      const protocol = location.protocol === 'https:' ? 'wss:' : 'ws:';
+      ws = new WebSocket(`${protocol}//${location.host}/ws/${runId}`);
+
+      ws.onopen = () => {
+        document.getElementById('status-badge').innerText = 'Connected';
+        document.getElementById('status-badge').className = 'badge badge-live';
+        ws.send(JSON.stringify({ type: 'subscribe', from_seq: events.length + 1 }));
+      };
+
+      ws.onmessage = (event) => {
+        const data = JSON.parse(event.data);
+        if (data.type === 'event' || data.event_id) {
+          events.push(data);
+          updateStats();
+          renderLogs();
+        }
+      };
+
+      ws.onclose = () => {
+        document.getElementById('status-badge').innerText = 'Disconnected';
+        document.getElementById('status-badge').className = 'badge';
+        setTimeout(() => connectWebSocket(runId), 2000);
+      };
+    }
+
+    // Animation Canvas
+    const canvas = document.getElementById('agentCanvas');
+    const ctx = canvas.getContext('2d');
+    function resize() {
+      canvas.width = canvas.parentElement.clientWidth;
+      canvas.height = 260;
+    }
+    window.addEventListener('resize', resize);
+    resize();
+
+    const nodes = [
+      { id: 'supervisor', label: 'Supervisor', x: 0.18, y: 0.5, color: '#38bdf8' },
+      { id: 'scout', label: 'Scout Agent', x: 0.5, y: 0.22, color: '#10b981' },
+      { id: 'triage', label: 'Triage Agent', x: 0.5, y: 0.78, color: '#f59e0b' },
+      { id: 'analyst', label: 'Analyst (BDI)', x: 0.82, y: 0.5, color: '#ef4444' }
+    ];
+
+    let t = 0;
+    function draw() {
+      t += 0.02;
+      ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+      // Draw Edges
+      nodes.forEach(n1 => {
+        nodes.forEach(n2 => {
+          if (n1 !== n2 && (n1.id === 'supervisor' || n2.id === 'analyst')) {
+            ctx.beginPath();
+            ctx.moveTo(n1.x * canvas.width, n1.y * canvas.height);
+            ctx.lineTo(n2.x * canvas.width, n2.y * canvas.height);
+            ctx.strokeStyle = '#1e293b';
+            ctx.lineWidth = 2;
+            ctx.stroke();
+
+            // Flow particle
+            const px = (n1.x + (n2.x - n1.x) * ((t + n1.x) % 1)) * canvas.width;
+            const py = (n1.y + (n2.y - n1.y) * ((t + n1.x) % 1)) * canvas.height;
+            ctx.beginPath();
+            ctx.arc(px, py, 3, 0, Math.PI * 2);
+            ctx.fillStyle = n1.color;
+            ctx.fill();
+          }
+        });
+      });
+
+      // Draw Nodes
+      nodes.forEach(n => {
+        const cx = n.x * canvas.width;
+        const cy = n.y * canvas.height;
+        ctx.beginPath();
+        ctx.arc(cx, cy, 22, 0, Math.PI * 2);
+        ctx.fillStyle = '#121824';
+        ctx.fill();
+        ctx.lineWidth = 3;
+        ctx.strokeStyle = n.color;
+        ctx.stroke();
+
+        ctx.fillStyle = '#f1f5f9';
+        ctx.font = '11px monospace';
+        ctx.textAlign = 'center';
+        ctx.fillText(n.label, cx, cy + 34);
+      });
+
+      requestAnimationFrame(draw);
+    }
+    draw();
+
+    window.onload = init;
+  </script>
+</body>
+</html>

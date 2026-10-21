@@ -1,0 +1,75 @@
+======================================================================================
+ SentryScan Milestone 5.2 Capstone -- Autonomous Multi-Agent Security Platform Demo 
+======================================================================================
+
+[*] Initializing End-to-End Capstone Simulation Environment:
+    - Seed: 42 (Deterministic PRNG)
+    - Fleet: 4 Simulated Enterprise Endpoints in RFC 5737 IP Space
+    - Telemetry Mix: Nominal + Controlled Banner Poisoning (Service Contradiction)
+    - Multi-Agent Orchestration: LangGraph Supervisor (Scout vs Triage Contract-Net)
+    - Knowledge Enrichment: Local Vulnerability Ontology (CVE / CVSS v3.1)
+    - Deliberative Core: BDI Intention Preemption & Host Quarantine
+    - Cryptographic Security: Ed25519 Canonical Envelope Authentication Gate
+    - Dual-Sink Persistence: Append-Only JSONL Trace & Indexed SQLite Store
+    - UI & Gateway: Loopback FastAPI/WebSocket Gateway & Rich Terminal Dashboard
+
+[1] Step 1: Endpoint Fleet Telemetry Ingestion & Data Integrity
+    - Simulated Endpoints Ingested : 10 records across 4 devices
+      * sim-host-001   (192.0.2.1    ) : http:80    
+      * sim-host-001   (192.0.2.1    ) : https:443  
+      * sim-host-001   (192.0.2.1    ) : ssh:22     
+      * sim-host-002   (192.0.2.2    ) : postgresql:5432 
+      * sim-host-002   (192.0.2.2    ) : ssh:22     
+      * sim-host-003   (192.0.2.3    ) : http:8080  
+      * sim-host-003   (192.0.2.3    ) : ftp:21     
+      * sim-host-003   (192.0.2.3    ) : telnet:23   [POISONED: Service Contradiction]
+      * sim-host-004   (192.0.2.4    ) : rdp:3389   
+      * sim-host-004   (192.0.2.4    ) : smb:445    
+
+[2] Step 2: Multi-Agent Contract-Net Task Negotiation & Utility Allocation
+    - Proposer Awarded : scout-agent
+    - Workflow Phase   : COMPLETED
+    - Inter-Agent Envelopes Dispatched : 14 messages
+      * supervisor-agent   -> scout-agent        : CFP          (30877432...)
+      * supervisor-agent   -> triage-agent       : CFP          (d7e805da...)
+      * scout-agent        -> supervisor-agent   : PROPOSE      (bb81e3c2...)
+      * triage-agent       -> supervisor-agent   : PROPOSE      (73c8eb5b...)
+      * supervisor-agent   -> scout-agent        : ACCEPT       (c87a171a...)
+      * supervisor-agent   -> triage-agent       : REJECT       (e48478dc...)
+
+[3] Step 3: Vulnerability Discovery, Knowledge Enrichment & BDI Quarantine
+    - Total Findings Discovered : 5
+      * fnd-000001 | Host: sim-host-003   | Sev: CRITICAL | Rule: RULE-004 [BDI QUARANTINED]
+      * fnd-000002 | Host: sim-host-003   | Sev: MEDIUM   | Rule: RULE-006 [BDI QUARANTINED]
+      * fnd-000003 | Host: sim-host-003   | Sev: MEDIUM   | Rule: RULE-002 [BDI QUARANTINED]
+      * fnd-000004 | Host: sim-host-003   | Sev: CRITICAL | Rule: RULE-005 [BDI QUARANTINED]
+      * fnd-000005 | Host: sim-host-003   | Sev: HIGH     | Rule: RULE-001 [BDI QUARANTINED]
+    - Quarantined Hosts Count : 1
+    - Quarantined Targets     : ['sim-host-003']
+    - Final BDI Intention State : SURFACE_CRITICAL_FINDINGS (Reconsiderations: 3)
+
+[4] Step 4: Observability, SQLite/JSONL Dual Sinks & Strict Parity Audit
+    - SQLite Event Count : 31
+    - JSONL Event Count  : 31
+    - Monotonic Sequence : Gap-Free (has_seq_gaps=False)
+    - Cross-Sink ID Match: True
+    - Parity Verification: PASSED [100%]
+
+
+======================================================================================
+ Final Capstone Executive Verification Summary 
+======================================================================================
+Metric                              | Observed Value                               
+--------------------------------------------------------------------------------------
+Simulation Run ID                   | run-capstone-evidence                        
+LangGraph Workflow Status           | COMPLETED                                    
+Negotiation Consensus               | Awarded to scout-agent                       
+Detected Findings                   | 5 findings                                   
+BDI Host Quarantine                 | 1 host(s) (['sim-host-003'])                 
+SQLite Event Store                  | 31 indexed rows                              
+Authoritative JSONL Trace           | 31 lines                                     
+Single-Writer Monotonic Parity      | VERIFIED (100% Match, Zero Gaps)             
+Execution Duration                  | 1.02 seconds                                 
+======================================================================================
+ [PASS] Milestone 5.2 Capstone Simulation Successfully Verified!
+======================================================================================

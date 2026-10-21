@@ -86,8 +86,8 @@ SentryScan combines classical deliberative agent paradigms with modern multi-age
 | **v0.6** | **Released** | Utility Optimization | Normalized multi-attribute utility formula, hard constraint filtering, exhaustive optimality verification, weight sensitivity analysis |
 | **v0.7** | **Released** | Deliberative BDI | Epistemic Beliefs, Desires, and committed Intentions; LangGraph Analyst workflow; autonomous intention reconsideration upon critical finding updates |
 | **v0.8** | **Released** | Context Enrichment | Vulnerability knowledge ontology, read-only NVD CVE adapter with resilient caching and offline fallback |
-| **v0.9** | **Active** | Cryptographic Security | Ed25519 message signatures, canonical RFC 8785 envelope bytes, bounded anti-replay nonce cache, security gate |
-| **v1.0** | Planned | Capstone & UI | Full supervisor graph integration, SQLite entity persistence, FastAPI WebSocket gateway, live browser visualization |
+| **v0.9** | **Released** | Cryptographic Security | Ed25519 message signatures, canonical RFC 8785 envelope bytes, bounded anti-replay nonce cache, security gate |
+| **v1.0** | **Released** | Capstone & UI | End-to-end supervisor graph integration, SQLite entity persistence with 100% parity guarantee, FastAPI WebSocket gateway, prebuilt HTML5 Canvas dashboard & Rich CLI terminal |
 
 ---
 
@@ -102,6 +102,8 @@ sentryscan/
 ├── docs/                          # Architectural documentation & HLD
 │   └── hld/SentryScan_HLD_v1.2.md # Complete architectural reference
 ├── fixtures/telemetry/            # Seeded deterministic test telemetry
+├── frontend/                      # Prebuilt HTML5 Canvas SPA dashboard
+├── main.py                        # One-command capstone executable runner
 ├── scripts/                       # Developer automation scripts
 │   ├── export_specification_pdf.py# Headless specification PDF generator
 │   └── package_assignment.py      # Tag-based reproducible archive packager
@@ -120,6 +122,10 @@ sentryscan/
 │   ├── transport/                 # Binary framing, TCP socket client/server, in-process adapter
 │   ├── knowledge/                 # Vulnerability ontology, NVD 2.0 API adapter, cache & enricher
 │   ├── security/                  # Cryptographic Ed25519 identity, trusted registry & security gate
+│   ├── storage/                   # Relational SQLite run store & parity verifier
+│   ├── dashboard_gateway/         # Loopback FastAPI REST & WebSocket server
+│   ├── ui/                        # Rich terminal CLI dashboard
+│   ├── capstone.py                # End-to-end multi-agent orchestration pipeline
 │   └── observability/             # Event bus, JSONL & SQLite recorders
 └── tests/                         # Comprehensive unit & integration tests
 ```
@@ -156,6 +162,12 @@ pytest -v --cov=sentryscan tests/
 
 # Run code style and lint checks
 ruff check .
+
+# Execute deterministic one-command Capstone demonstration
+python main.py --demo
+
+# Launch Capstone with live Web Dashboard gateway at http://127.0.0.1:8000
+python main.py --demo --serve --port 8000
 ```
 
 ---
@@ -173,6 +185,7 @@ For audit and evaluation purposes, each major development milestone maintains a 
 - **Milestone 4.2:** [Knowledge Representation & External API Enrichment](assignments/assignment_4_2/README.md) — Vulnerability ontology, read-only NVD CVE adapter with schema validation, persistent cache, retry/backoff, offline fallback, and intention escalation.
 
 - **Milestone 5.1:** [Cryptographic Message Authentication & Security Gate](assignments/assignment_5_1/README.md) — Ephemeral Ed25519 agent identities, trusted public key registry, canonical envelope signing with SHA-256 payload integrity, bounded fail-closed anti-replay nonce cache, and multi-stage inbound security gate protecting agent BDI deliberation against tampering, spoofing, and replays.
+- **Milestone 5.2:** [Capstone Architecture, Web Dashboard & UI Orchestration](assignments/assignment_5_2/README.md) — End-to-end supervisor graph fan-out to BDI Analyst, Ed25519-authenticated envelope exchange, SQLite and JSONL dual-sink with strict 100% event parity guarantee, loopback FastAPI REST + WebSocket gateway with sequence-based backfill, prebuilt interactive HTML5 Canvas dashboard, Rich CLI fallback, and one-command runner (main.py --demo).
 
 To package any tagged milestone into an immutable, reproducible archive:
 ```bash

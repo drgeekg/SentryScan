@@ -5,6 +5,8 @@ rich==13.8.1
 python-dotenv==1.2.2
 langgraph>=0.2.0,<2.0.0
 cryptography>=42.0.0
+fastapi>=0.110.0
+uvicorn>=0.28.0
 
 # Development & Testing Dependencies
 pytest==8.3.4
