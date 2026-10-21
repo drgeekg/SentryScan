@@ -18,6 +18,9 @@ class EventType(str, Enum):
     UNMATCHED_RECORD = "unmatched_record"
     FINDING_CREATED = "finding_created"
     REPORT_WRITTEN = "report_written"
+    MESSAGE_SENT = "message_sent"
+    MESSAGE_RECEIVED = "message_received"
+    STATE_TRANSITION = "state_transition"
     RUN_COMPLETED = "run_completed"
 
 
@@ -38,11 +41,13 @@ class AgentEvent(BaseModel):
     seq: int = Field(..., ge=1, description="Gap-free monotonic sequence number")
     timestamp_utc: str = Field(..., description="ISO-8601 UTC timestamp")
     event_type: EventType = Field(..., description="Classification of the event")
-    component: str = Field(..., min_length=1, description="Originating component name")
-    record_id: str | None = Field(None, description="Correlated telemetry record ID")
-    host_id: str | None = Field(None, description="Correlated host ID")
-    rule_id: str | None = Field(None, description="Correlated rule ID")
-    finding_id: str | None = Field(None, description="Correlated finding ID")
-    status: EventStatus = Field(EventStatus.OK, description="Execution status")
-    reason_code: str | None = Field(None, description="Machine-readable outcome code")
-    details: dict[str, Any] = Field(default_factory=dict, description="Contextual payload")
+    component: str = Field(..., description="Originating agent, parser, or actuator")
+    status: EventStatus = Field(default=EventStatus.OK, description="Resulting status")
+    record_id: str | None = Field(default=None, description="Correlated telemetry record ID")
+    host_id: str | None = Field(default=None, description="Correlated host ID")
+    rule_id: str | None = Field(default=None, description="Correlated rule ID")
+    finding_id: str | None = Field(default=None, description="Correlated finding ID")
+    reason_code: str | None = Field(
+        default=None, description="Machine-readable error/rejection reason"
+    )
+    details: dict[str, Any] = Field(default_factory=dict, description="Arbitrary typed metadata")

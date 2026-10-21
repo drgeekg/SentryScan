@@ -1,0 +1,72 @@
+==============================================================================
+ SentryScan Milestone 2.2 -- Socket Messaging & Autonomous Analyst 
+==============================================================================
+
+[1] Starting Process B (AnalystAgent) TCP Server on 127.0.0.1 (ephemeral port)...
+    [+] AnalystAgent listening on 127.0.0.1:54948
+
+[2] Connecting Process A (Supervisor Client) via TCP with backoff...
+    [+] Established framed TCP connection to port 54948
+
+[3] Transmitting Security ALERT Messages across Socket...
+
+    [>] SENDER (supervisor-agent) -> RECEIVER (analyst-agent-01):
+        Message ID:   msg-000001 (Performative: ALERT)
+        Target:       192.0.2.10 | Finding: fnd-0001 | Severity: CRITICAL
+        Nonce:        30877432d1026706
+    [<] RECEIVER (supervisor-agent) <- SENDER (analyst-agent-01):
+        Message ID:   msg-000002 (Performative: PARAMS_UPDATE)
+        Action:       DEEP_INSPECTION
+        Interval:     50 ms
+        Quarantine:   True
+        Priority:     [80, 443, 22, 23, 3389, 8080]
+        Rationale:    Critical finding on 192.0.2.10 (fnd-0001). Escalating to immediate high-frequency deep inspection with host quarantine.
+
+    [>] SENDER (supervisor-agent) -> RECEIVER (analyst-agent-01):
+        Message ID:   msg-000003 (Performative: ALERT)
+        Target:       192.0.2.11 | Finding: fnd-0002 | Severity: HIGH
+        Nonce:        bb81e3c29b621792
+    [<] RECEIVER (supervisor-agent) <- SENDER (analyst-agent-01):
+        Message ID:   msg-000004 (Performative: PARAMS_UPDATE)
+        Action:       DEEP_INSPECTION
+        Interval:     100 ms
+        Quarantine:   False
+        Priority:     [80, 443, 22]
+        Rationale:    High-severity finding on 192.0.2.11 (fnd-0002). Tightening sampling window and monitoring core exposure ports.
+
+    [>] SENDER (supervisor-agent) -> RECEIVER (analyst-agent-01):
+        Message ID:   msg-000005 (Performative: ALERT)
+        Target:       192.0.2.12 | Finding: fnd-0003 | Severity: MEDIUM
+        Nonce:        c87a171ac826a6fc
+    [<] RECEIVER (supervisor-agent) <- SENDER (analyst-agent-01):
+        Message ID:   msg-000006 (Performative: PARAMS_UPDATE)
+        Action:       NOMINAL_MONITORING
+        Interval:     250 ms
+        Quarantine:   False
+        Priority:     []
+        Rationale:    Medium risk finding on 192.0.2.12 (fnd-0003). Applying standard targeted observation cadence.
+
+    [>] SENDER (supervisor-agent) -> RECEIVER (analyst-agent-01):
+        Message ID:   msg-000007 (Performative: ALERT)
+        Target:       192.0.2.13 | Finding: fnd-0004 | Severity: LOW
+        Nonce:        5d2cce8038a39d5e
+    [<] RECEIVER (supervisor-agent) <- SENDER (analyst-agent-01):
+        Message ID:   msg-000008 (Performative: PARAMS_UPDATE)
+        Action:       NOMINAL_MONITORING
+        Interval:     500 ms
+        Quarantine:   False
+        Priority:     []
+        Rationale:    Low or informational finding on 192.0.2.13. Retaining baseline telemetry cadence.
+
+[4] Testing Socket Fault Tolerance (Malformed Frame Handling)...
+    [>] Injecting intentionally corrupted frame payload...
+    [+] Analyst handled corrupted frame gracefully!
+        Performative returned: ERROR
+        Error details:         1 validation error for Message
+  Invalid JSON: expected value at line 1 column 1 [type=json_invalid, input_value='BROKEN_JSON_STRING_{{{not_json', input_type=str]
+    For further information visit https://errors.pydantic.dev/2.10/v/json_invalid
+
+[5] Verifying Transport Interface Parity (In-Process Adapter)...
+    [+] InProcessTransport produced identical autonomous PARAMS_UPDATE reply.
+
+[6] Clean shutdown of all TCP transports and sockets verified.
