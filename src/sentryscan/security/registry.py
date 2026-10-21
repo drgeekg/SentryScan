@@ -108,6 +108,10 @@ class TrustedAgentRegistry:
         with open(target_path, "w", encoding="utf-8") as f:
             json.dump(data, f, indent=2)
 
+    def list_all(self) -> list[TrustedAgentRecord]:
+        """Return list of all registered TrustedAgentRecords."""
+        return list(self._records.values())
+
     def to_list(self) -> list[dict[str, Any]]:
         """Return list of dictionary representations of registered agents."""
         return [rec.model_dump() for rec in self._records.values()]

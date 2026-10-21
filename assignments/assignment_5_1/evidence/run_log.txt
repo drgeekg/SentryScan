@@ -1,0 +1,81 @@
+==================================================================================
+ SentryScan Milestone 5.1 -- Cryptographic Message Authentication & Gate Demo 
+==================================================================================
+
+[*] Initializing Cryptographic Environment:
+    - Trusted Registry Agents : 3 enrolled
+      * supervisor-agent-01 (Supervisor): 8d3834f88d01b760...
+      * analyst-agent-01 (Analyst): 004e44cbf8f30b0f...
+      * sensor-agent-01 (Sensor): 876202482e8781cc...
+    - Untrusted Rogue Agent  : rogue-agent-99 (Unregistered)
+    - Inbound Gate Recipient : analyst-agent-01
+    - Clock Skew Allowance   : +/- 30.0s
+    - Anti-Replay Cache      : NonceCache (capacity=10000, ttl=60.0s)
+
+[1] Scenario 1: Nominal Valid Signed Message
+    - Envelope ID      : msg-000001
+    - Sender           : sensor-agent-01 -> Receiver: analyst-agent-01
+    - Payload Digest   : 496f1d2569943a65e3b1...
+    - Ed25519 Sig      : dc5cfb3cbc3905538168...
+    - Gate Evaluation  : valid=True, reason=OK
+    - Analyst Action   : Emitted PARAMS_UPDATE (Action: DEEP_INSPECTION)
+    - BDI Belief Count : 1 host belief(s)
+
+[2] Scenario 2: Untrusted Sender (UNKNOWN_SENDER)
+    - Sender           : rogue-agent-99 (Not in registry)
+    - Gate Evaluation  : valid=False, reason=UNKNOWN_SENDER
+    - Audit Message    : Sender agent 'rogue-agent-99' is not registered or is revoked.
+    - Analyst Shield   : Emitted ERROR (UNKNOWN_SENDER); zero BDI mutation
+
+[3] Scenario 3: Mismatched Recipient (WRONG_RECIPIENT)
+    - Target Envelope  : intended for 'actuator', inspected at 'analyst'
+    - Gate Evaluation  : valid=False, reason=WRONG_RECIPIENT
+    - Audit Message    : Recipient mismatch: expected 'analyst-agent-01', message specifies 'actuator-agent-01'.
+    - Analyst Shield   : Emitted ERROR (WRONG_RECIPIENT); wrong recipient blocked
+
+[4] Scenario 4: Tampered Payload in Transit (PAYLOAD_TAMPERED)
+    - Interception     : Altered payload 'LOW' -> 'CRITICAL'
+    - Gate Evaluation  : valid=False, reason=PAYLOAD_TAMPERED
+    - Audit Message    : Payload SHA-256 digest mismatch. Content has been tampered in transit.
+    - Analyst Shield   : Emitted ERROR (PAYLOAD_TAMPERED); tamper caught
+
+[5] Scenario 5: Forged / Corrupted Ed25519 Signature (BAD_SIGNATURE)
+    - Impersonation    : Corrupted signature on claimed supervisor envelope
+    - Gate Evaluation  : valid=False, reason=BAD_SIGNATURE
+    - Audit Message    : Ed25519 cryptographic signature verification failed for sender 'supervisor-agent-01'.
+    - Analyst Shield   : Emitted ERROR (BAD_SIGNATURE); forgery blocked
+
+[6] Scenario 6: Expired / Stale Timestamp (STALE_TIMESTAMP)
+    - Timestamp Skew   : Envelope is 90s behind (Allowance: +/-30s)
+    - Gate Evaluation  : valid=False, reason=STALE_TIMESTAMP
+    - Audit Message    : Timestamp 2026-10-21T09:58:30Z outside freshness window (skew=90.0s, max=30.0s).
+    - Analyst Shield   : Emitted ERROR (STALE_TIMESTAMP); stale clock blocked
+
+[7] Scenario 7: Duplicate Envelope Replay Attack (REPLAYED_NONCE)
+    - Replay Target    : Re-broadcasting legitimate envelope (ab4e8b3c5eb66dad)
+    - Gate Evaluation  : valid=False, reason=REPLAYED_NONCE
+    - Audit Message    : Nonce 'ab4e8b3c5eb66dad' from sender 'sensor-agent-01' was previously seen within window.
+    - Analyst Shield   : Emitted ERROR (REPLAYED_NONCE); replay prevented
+
+[8] Scenario 8: Fail-Closed Cache Saturation (NONCE_CACHE_FULL)
+    - Cache Capacity   : max_size=3 (Currently saturated)
+    - Gate Evaluation  : valid=False, reason=NONCE_CACHE_FULL
+    - Audit Message    : Nonce cache capacity exhausted. Gate failing closed.
+    - Security Stance  : Fail-Closed (Never accepts un-cached nonces during saturation)
+
+==================================================================================
+ Security Verification Matrix Summary 
+==================================================================================
+Scenario                  | Sender                 | Expected           | Actual             | Status
+-----------------------------------------------------------------------------------------------
+1. Nominal Valid Message  | sensor-agent-01        | OK                 | OK                 | PASS
+2. Untrusted Sender       | rogue-agent-99         | UNKNOWN_SENDER     | UNKNOWN_SENDER     | PASS
+3. Wrong Recipient        | supervisor-agent-01    | WRONG_RECIPIENT    | WRONG_RECIPIENT    | PASS
+4. Tampered Payload       | sensor-agent-01        | PAYLOAD_TAMPERED   | PAYLOAD_TAMPERED   | PASS
+5. Bad Signature          | supervisor-agent-01 (forged) | BAD_SIGNATURE      | BAD_SIGNATURE      | PASS
+6. Stale Timestamp        | sensor-agent-01        | STALE_TIMESTAMP    | STALE_TIMESTAMP    | PASS
+7. Replayed Envelope      | sensor-agent-01        | REPLAYED_NONCE     | REPLAYED_NONCE     | PASS
+8. Cache Saturation       | sensor-agent-01        | NONCE_CACHE_FULL   | NONCE_CACHE_FULL   | PASS
+==================================================================================
+ [PASS] All 8 Cryptographic Security Gate Scenarios Successfully Verified!
+==================================================================================
