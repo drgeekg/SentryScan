@@ -103,14 +103,15 @@ class PlanOptimizer:
         def sort_key(score: EvaluationScore) -> tuple[float, float, float, float, str]:
             p = plan_map[score.plan_id]
             return (
-                score.utility_score,
-                p.severity_coverage,
-                p.host_coverage,
-                -p.cost,
+                -score.utility_score,
+                -p.severity_coverage,
+                -p.host_coverage,
+                p.cost,
                 score.plan_id,
             )
 
-        best_score = max(evaluated_scores, key=sort_key)
+        sorted_scores = sorted(evaluated_scores, key=sort_key)
+        best_score = sorted_scores[0]
         winner = plan_map[best_score.plan_id]
 
         return OptimizationResult(
