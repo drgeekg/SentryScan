@@ -1,0 +1,63 @@
+# Assignment 5.2 Acceptance Checklist
+
+- [x] Full Supervisor Integration (`src/sentryscan/graphs/supervisor.py`, `src/sentryscan/graphs/state.py`):
+  - Added `analyst_replies` and `quarantined_hosts` channels to `SupervisorState`.
+  - Supervisor triage node constructs canonical Ed25519-signed `ALERT` envelopes and dispatches to `AnalystAgent`.
+  - Analyst Agent performs BDI deliberation, queries local NVD/CVSS knowledge ontology, discovers CVE-2021-41773 / path traversal, triggers intention preemption to `SURFACE_CRITICAL_FINDINGS`, and executes host quarantine.
+  - Quarantined hosts are merged back into `SupervisorState` and persisted across the run.
+- [x] Dual-Sink Event Persistence & SQLite Run Store (`src/sentryscan/storage/store.py`, `src/sentryscan/observability/recorder.py`):
+  - Implemented `SQLiteRunStore` schema with indexed tables: `runs`, `events`, `messages`, `telemetry_records`, `findings`, `bdi_snapshots`, `llm_calls`.
+  - Integrated dual-sink capability in `EventRecorder` so every single event assigned a monotonic sequence number `seq` is concurrently written to the authoritative JSONL trace and the indexed SQLite database.
+  - Implemented `verify_parity()` verifying:
+    - $\text{count}(\text{SQLite}) == \text{count}(\text{JSONL})$
+    - Zero `seq` gaps: $\forall i \in [1, N], \text{seq}_i = i$
+    - Cross-sink entity ID and event type correspondence.
+- [x] Loopback Gateway with Sequence-Based Resync (`src/sentryscan/dashboard_gateway/server.py`):
+  - Implemented FastAPI REST API endpoints:
+    - `/api/runs` and `/api/runs/{run_id}`: Run metadata and execution status.
+    - `/api/runs/{run_id}/events`: Event history filtered by sequence number and pagination.
+    - `/api/runs/{run_id}/messages`: Inter-agent message audit log.
+    - `/api/runs/{run_id}/devices`: Simulated fleet endpoint records and poisoning indicators.
+    - `/api/runs/{run_id}/findings`: Vulnerability findings and quarantine state.
+    - `/api/runs/{run_id}/bdi`: BDI deliberative snapshots and intention evolution.
+    - `/api/runs/{run_id}/llm`: Switchable LLM advisory call audit.
+    - `/api/runs/{run_id}/parity`: Real-time parity verification audit.
+  - Implemented WebSocket streaming (`/ws/{run_id}`):
+    - Supports client sequence handshake `{"subscribe": "...", "from_seq": K}`.
+    - Automatically backfills historical missed events $[K, N]$ from SQLite store before entering live push mode.
+    - Guarantees zero dropped events upon reconnect.
+- [x] Rich Terminal Dashboard Fallback (`src/sentryscan/ui/rich_dashboard.py`):
+  - Provides ANSI terminal dashboard using `rich` library (`Table`, `Panel`, `Layout`, `Live`).
+  - Renders live fleet status, agent negotiation progress, detected findings, and audit event stream without requiring browser or graphical environment.
+- [x] Prebuilt Web Dashboard Bundle (`frontend/dist/index.html`):
+  - High-performance, zero-external-dependency HTML5 Canvas SPA.
+  - Animated 60fps multi-agent particle network visualizing inter-agent communication (Supervisor, Scout, Triage, Analyst, Workers).
+  - Dark cybersecurity theme, responsive layout, real-time metrics cards, findings table with severity indicators, and live event log.
+  - Direct WebSocket connectivity to loopback gateway with automatic reconnect and REST fallback.
+  - Static distribution placed in `frontend/dist/` for single-step deployment without Node.js tooling.
+- [x] One-Command Capstone Runner (`src/sentryscan/capstone.py`, `main.py`):
+  - Top-level executable entry point `main.py --demo` executing complete multi-agent pipeline:
+    - RFC 5737 synthetic fleet generation with nominal + poisoned records.
+    - Contract-Net task negotiation between Scout and Triage.
+    - Parallel worker scanning and vulnerability discovery.
+    - Ed25519-authenticated envelope dispatch through security gate.
+    - Deliberative BDI analysis, CVE knowledge enrichment, and host quarantine.
+    - Dual-sink JSONL & SQLite recording with strict 100% parity verification.
+  - Optional `--serve` flag to immediately launch FastAPI loopback server.
+- [x] Verification Suite & Automated Tests:
+  - Unit tests for SQLite storage (`tests/unit/test_storage_store.py`) — 2/2 passed.
+  - Unit tests for dashboard gateway (`tests/unit/test_dashboard_gateway.py`) — 3/3 passed.
+  - Unit tests for Rich dashboard (`tests/unit/test_rich_dashboard.py`) — 1/1 passed.
+  - Unit tests for capstone runner (`tests/unit/test_capstone_runner.py`) — 1/1 passed.
+  - End-to-end integration tests (`tests/integration/test_capstone_parity_and_replay.py`) — 4/4 passed:
+    - Strict parity test (`count(SQLite) == count(JSONL)`, zero `seq` gaps).
+    - Determinism across multiple runs with identical seed.
+    - Replay consistency (loading recorded events matches state without mutation).
+    - WebSocket sequence-based backfill and resync.
+  - Total test suite: 149/149 tests passing cleanly across the repository.
+- [x] Demonstration Artifacts & Evidence (`assignments/assignment_5_2/evidence/`):
+  - `run_log.txt`: Complete execution transcript showing fleet ingestion, negotiation, findings, BDI quarantine, and parity check.
+  - `capstone_verification_matrix.md`: Detailed architectural matrix mapping all M1–M10 capstone requirements to implementation evidence.
+  - `trace_excerpt.jsonl`: Formatted JSONL trace showing event stream and monotonic sequence numbers.
+- [x] Code Quality & Formatting:
+  - Ruff linter passing cleanly with 0 errors across all code and tests.
