@@ -64,3 +64,6 @@ frontend/.vite/
 .DS_Store
 Thumbs.db
 Desktop.ini
+
+# Tool generated
+graphify-out/
