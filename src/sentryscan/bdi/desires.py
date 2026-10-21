@@ -40,9 +40,12 @@ class Desire(BaseModel):
 
         if self.desire_type == DesireType.SURFACE_CRITICAL_FINDINGS:
             if not self.target_host:
-                return any(h.is_critical() for h in beliefs.hosts.values())
+                return any(
+                    h.highest_severity in ("CRITICAL", "HIGH")
+                    for h in beliefs.hosts.values()
+                )
             host = beliefs.hosts.get(self.target_host)
-            return host is not None and host.is_critical()
+            return host is not None and host.highest_severity in ("CRITICAL", "HIGH")
 
         if self.desire_type == DesireType.AUDIT_ASSIGNED_HOSTS:
             return beliefs.fleet.remaining_budget >= 5.0
