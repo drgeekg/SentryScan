@@ -1,0 +1,51 @@
+﻿==============================================================================
+ SentryScan Milestone 2.1 ù Concurrency, Fleet & Integrity Verification 
+==============================================================================
+
+[*] Experiment 1: Race Condition & Lost Updates Proof
+    - Target Operations:     500 increments (10 threads x 50)
+    - Without Lock (Race):   53 updates (LOST: 447 updates!)
+    - With Mutex Lock:       500 updates (100% accurate, 0 lost)
+
+[*] Initializing Simulated Endpoint Fleet (RFC 5737 space)...
+    - Device: sim-host-001 | IP: 192.0.2.1       | Svc Count: 3
+    - Device: sim-host-002 | IP: 192.0.2.2       | Svc Count: 2
+    - Device: sim-host-003 | IP: 192.0.2.3       | Svc Count: 3
+    - Device: sim-host-004 | IP: 192.0.2.4       | Svc Count: 2
+    - Device: sim-host-005 | IP: 192.0.2.5       | Svc Count: 2
+[*] Monitor daemon launched in background thread.
+
+[*] Emitting telemetry stream and injecting controlled anomalies...
+[+] Daemon stopped cleanly. Total heartbeats emitted: 5
+
+[*] Consuming queue and performing integrity & rule evaluation...
+
+==============================================================================
+                     MILESTONE 2.1 EXECUTION REPORT                   
+==============================================================================
+[*] Total Telemetry Ingested:    65 records
+[*] Suspect Records Flagged:     4 records
+[*] Total Findings Created:      42 findings
+
+[*] Detection Accuracy vs Ground Truth Sidecar:
+    - True Positives (Detected): 4
+    - True Negatives (Clean):    60
+    - False Positives:           0
+    - False Negatives:           1
+    - Precision:                 100.0%
+    - Recall:                    80.0%
+    - F1-Score:                  88.9%
+
+[*] Queue & Turnaround Latencies (ms):
+    - Queue Wait (p50):          72.052 ms
+    - Queue Wait (p95):          131.453 ms
+    - Turnaround (p50):          72.061 ms
+    - Turnaround (p95):          131.500 ms
+
+[*] Generated Evidence Artifacts:
+    - Trace File:                C:\Users\Ganesh\Desktop\Agent Technology1\SentryScan\data\runs\demo_2_1\trace.jsonl
+    - Latency Metrics CSV:       C:\Users\Ganesh\Desktop\Agent Technology1\SentryScan\data\runs\demo_2_1\metrics.csv
+    - Detection Report JSON:     C:\Users\Ganesh\Desktop\Agent Technology1\SentryScan\data\runs\demo_2_1\detection_report.json
+==============================================================================
+[+] All Assignment 2.1 requirements successfully demonstrated!
+
