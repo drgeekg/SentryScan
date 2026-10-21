@@ -28,5 +28,7 @@ class SupervisorState(TypedDict, total=False):
     # Reducer channels: accumulators across fan-out nodes and multi-turn negotiation
     messages: Annotated[list[Message], operator.add]
     findings: Annotated[list[Finding], operator.add]
+    analyst_replies: Annotated[list[Message], operator.add]
+    quarantined_hosts: Annotated[list[str], operator.add]
     errors: Annotated[list[str], operator.add]
     metadata: dict[str, Any]
