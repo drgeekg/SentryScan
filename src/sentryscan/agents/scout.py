@@ -72,6 +72,9 @@ class ScoutAgent:
             selected_batches.append(bid)
             total_cost = cost
             total_time = time_ms
+            for r in batches[bid]:
+                if r.get("host_id"):
+                    covered_hosts.add(r["host_id"])
 
         coverage_ratio = len(covered_hosts) / max(1, len(all_hosts))
 

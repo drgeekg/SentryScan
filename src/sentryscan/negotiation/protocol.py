@@ -80,7 +80,7 @@ class ContractNetNegotiator:
                     timestamp_utc=self.clock.now_iso(),
                     nonce=self.id_gen.seeded_token(16),
                     task_id=task_id,
-                    payload={"round": current_round, "constraints": constraints},
+                    payload={"round": current_round, "constraints": dict(constraints)},
                 )
                 messages.append(cfp_msg)
 
