@@ -1,17 +1,13 @@
-"""Scoring seam for Contract-Net proposals prior to full 3.2 optimizer."""
+"""Scoring seam delegating proposal evaluation to the PlanOptimizer engine."""
 
 from __future__ import annotations
 
 from typing import Any
 
 from sentryscan.contracts.proposal import Proposal
-
-DEFAULT_WEIGHTS = {
-    "coverage": 0.50,
-    "cost": 0.20,
-    "time": 0.15,
-    "risk": 0.15,
-}
+from sentryscan.optimizer.engine import PlanOptimizer
+from sentryscan.optimizer.formula import CandidatePlan
+from sentryscan.optimizer.weights import UtilityWeights
 
 
 def score_bid(
@@ -19,36 +15,51 @@ def score_bid(
     weights: dict[str, float] | None = None,
     constraints: dict[str, Any] | None = None,
 ) -> float:
-    """Evaluate and score a proposal bid against constraints and weights.
+    """Evaluate and score a proposal bid delegating to the production PlanOptimizer.
 
+    Maintains exact backwards compatibility with Milestone 3.1 signature.
     Returns -infinity if hard constraints are violated (infeasible option).
     """
-    w = weights if weights is not None else DEFAULT_WEIGHTS
-    c = constraints if constraints is not None else {}
+    c = constraints or {}
 
-    max_cost = float(c.get("max_cost", 100.0))
-    max_time = float(c.get("max_time", 1000.0))
+    # Map weights dict to validated UtilityWeights model if provided
+    if weights is not None:
+        try:
+            # Map simple dict keys to UtilityWeights fields
+            w_sev = float(weights.get("severity", weights.get("coverage", 0.35)))
+            w_hosts = float(weights.get("hosts", weights.get("coverage", 0.25)))
+            w_cost = float(weights.get("cost", 0.15))
+            w_time = float(weights.get("time", 0.15))
+            w_risk = float(weights.get("risk", 0.10))
+            total = w_sev + w_hosts + w_cost + w_time + w_risk
+            opt_weights = UtilityWeights(
+                w_severity=w_sev / total,
+                w_hosts=w_hosts / total,
+                w_cost=w_cost / total,
+                w_time=w_time / total,
+                w_risk=w_risk / total,
+            )
+        except Exception:
+            opt_weights = UtilityWeights.default()
+    else:
+        opt_weights = UtilityWeights.default()
 
-    # Hard constraints filtering
-    if proposal.est_cost > max_cost:
-        return -float("inf")
-    if proposal.est_time > max_time:
-        return -float("inf")
-    if not proposal.batch_ids:
-        return -float("inf")
+    optimizer = PlanOptimizer(weights=opt_weights)
 
-    # Normalization
-    norm_cost = min(1.0, proposal.est_cost / max(1.0, max_cost))
-    norm_time = min(1.0, proposal.est_time / max(1.0, max_time))
-    norm_coverage = max(0.0, min(1.0, proposal.est_coverage))
-    norm_risk = max(0.0, min(1.0, proposal.risk))
-
-    # Objective formula
-    score = (
-        w.get("coverage", 0.50) * norm_coverage
-        - w.get("cost", 0.20) * norm_cost
-        - w.get("time", 0.15) * norm_time
-        - w.get("risk", 0.15) * norm_risk
+    # Convert Proposal envelope into CandidatePlan
+    candidate = CandidatePlan(
+        plan_id=proposal.proposal_id,
+        proposer=proposal.proposer,
+        batch_ids=proposal.batch_ids,
+        severity_coverage=proposal.est_coverage,
+        host_coverage=proposal.est_coverage,
+        cost=proposal.est_cost,
+        time_ms=proposal.est_time,
+        risk=proposal.risk,
     )
 
-    return round(score, 4)
+    result = optimizer.optimize([candidate], constraints=c)
+    if result.status == "OPTIMAL_FOUND" and result.best_score is not None:
+        return result.best_score.utility_score
+
+    return -float("inf")

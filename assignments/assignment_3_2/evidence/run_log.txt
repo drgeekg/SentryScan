@@ -1,0 +1,36 @@
+==============================================================================
+ SentryScan Milestone 3.2 -- Multi-Attribute Utility Optimization 
+==============================================================================
+
+[1] Evaluating 10 Candidate Plans under Hard Constraints:
+    - Max Cost Limit: <= 50.0
+    - Max Time Limit: <= 400.0 ms
+    - Formula: U(o) = w_1*C_sev + w_2*C_hosts - w_3*Cost - w_4*Time - w_5*Risk
+    plan-01-minimal           | Feasible: Yes | Score: +0.1580 | Suboptimal
+    plan-02-breadth           | Feasible: Yes | Score: +0.3635 | Suboptimal
+    plan-03-risk-heavy        | Feasible: Yes | Score: +0.3840 | Suboptimal
+    plan-04-balanced-opt      | Feasible: Yes | Score: +0.4365 | WINNER (argmax o*)
+    plan-05-fast-triage       | Feasible: Yes | Score: +0.3010 | Suboptimal
+    plan-06-infeasible-cost   | Feasible: No  | Score:    -inf | REJECTED: COST_EXCEEDED (78.0 > 50.0)
+    plan-07-infeasible-time   | Feasible: No  | Score:    -inf | REJECTED: TIME_EXCEEDED (450.0 > 400.0)
+    plan-08-empty-batch       | Feasible: No  | Score:    -inf | REJECTED: EMPTY_BATCH_LIST
+    plan-09-moderate-breadth  | Feasible: Yes | Score: +0.2855 | Suboptimal
+    plan-10-high-risk-lean    | Feasible: Yes | Score: +0.3495 | Suboptimal
+
+[2] Optimization Decision:
+    [*] Selected Optimal Plan: plan-04-balanced-opt (triage-agent)
+       - Utility Score:       0.4365
+       - Severity Coverage:   0.92
+       - Host Coverage:       0.88
+       - Cost:                45.0 (Norm: 0.45)
+       - Time:                220.0 ms (Norm: 0.22)
+       - Residual Risk:       0.05 (Norm: 0.05)
+
+[3] Running Independent Brute-Force Verification...
+    [+] Independent exhaustive search 100% confirms mathematical optimality.
+
+[4] Performing Policy Weight Sensitivity Analysis:
+    - Preset 'default_balanced': Winner = plan-04-balanced-opt (triage-agent) with score 0.4365
+    - Preset 'risk_first      ': Winner = plan-04-balanced-opt (triage-agent) with score 0.566
+    - Preset 'coverage_first  ': Winner = plan-04-balanced-opt (triage-agent) with score 0.55
+    - Preset 'cost_constrained': Winner = plan-10-high-risk-lean (triage-agent) with score 0.058

@@ -1,0 +1,50 @@
+{
+  "default_balanced": {
+    "winner_plan_id": "plan-04-balanced-opt",
+    "proposer": "triage-agent",
+    "utility_score": 0.4365,
+    "weights": {
+      "w_severity": 0.35,
+      "w_hosts": 0.25,
+      "w_cost": 0.15,
+      "w_time": 0.15,
+      "w_risk": 0.1
+    }
+  },
+  "risk_first": {
+    "winner_plan_id": "plan-04-balanced-opt",
+    "proposer": "triage-agent",
+    "utility_score": 0.566,
+    "weights": {
+      "w_severity": 0.55,
+      "w_hosts": 0.15,
+      "w_cost": 0.1,
+      "w_time": 0.1,
+      "w_risk": 0.1
+    }
+  },
+  "coverage_first": {
+    "winner_plan_id": "plan-04-balanced-opt",
+    "proposer": "triage-agent",
+    "utility_score": 0.55,
+    "weights": {
+      "w_severity": 0.15,
+      "w_hosts": 0.55,
+      "w_cost": 0.1,
+      "w_time": 0.1,
+      "w_risk": 0.1
+    }
+  },
+  "cost_constrained": {
+    "winner_plan_id": "plan-10-high-risk-lean",
+    "proposer": "triage-agent",
+    "utility_score": 0.058,
+    "weights": {
+      "w_severity": 0.15,
+      "w_hosts": 0.15,
+      "w_cost": 0.5,
+      "w_time": 0.1,
+      "w_risk": 0.1
+    }
+  }
+}
