@@ -4,6 +4,7 @@ PyYAML==6.0.2
 rich==13.8.1
 python-dotenv==1.2.2
 langgraph>=0.2.0,<2.0.0
+cryptography>=42.0.0
 
 # Development & Testing Dependencies
 pytest==8.3.4

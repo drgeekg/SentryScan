@@ -27,6 +27,7 @@ dependencies = [
     "rich>=13.7.0",
     "python-dotenv>=1.0.0",
     "langgraph>=0.2.0",
+    "cryptography>=42.0.0",
 ]
 
 [project.optional-dependencies]
