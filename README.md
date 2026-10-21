@@ -81,8 +81,8 @@ SentryScan combines classical deliberative agent paradigms with modern multi-age
 | **v0.1** | **Released** | Core Foundations | Monorepo baseline, CI/CD pipeline, secret scanning, reproducible packager, High-Level Design (HLD v1.2), formal PEAS & environment model |
 | **v0.2** | **Released** | Reflex Reasoner | Injectable clock & deterministic ID generator, telemetry contracts, explicit condition-action rules, JSONL trace recorder, sense-parse-decide-act loop |
 | **v0.3** | **Released** | Concurrency & Fleet | Multi-device fleet simulator, background monitor daemon, thread-safe queues, data-integrity checker, isolated ground-truth sidecar |
-| **v0.4** | **Active** | Distributed Transport | Two-process architecture (Core + Analyst), length-prefixed TCP socket transport, autonomous Analyst agent |
-| **v0.5** | Planned | Multi-Agent Coordination | LangGraph supervisor graph, Scout and Triage roles, Contract-Net negotiation (`CFP` $\to$ `PROPOSE` $\to$ `ACCEPT`), subagent fan-out via `Send` |
+| **v0.4** | **Released** | Distributed Transport | Length-prefixed binary TCP socket transport, Transport interface with in-process adapter, autonomous Analyst agent with adaptive PARAMS_UPDATE |
+| **v0.5** | **Active** | Multi-Agent Coordination | LangGraph supervisor graph, Scout and Triage roles, Contract-Net negotiation (`CFP` $\to$ `PROPOSE` $\to$ `ACCEPT`), subagent fan-out via `Send` |
 | **v0.6** | Planned | Utility Optimization | Normalized multi-attribute utility formula, hard constraint filtering, exhaustive optimality verification |
 | **v0.7** | Planned | Deliberative BDI | Epistemic Beliefs, Desires, and committed Intentions; autonomous intention reconsideration upon critical finding updates |
 | **v0.8** | Planned | Context Enrichment | Vulnerability knowledge ontology, read-only NVD CVE adapter with resilient caching and offline fallback |
@@ -112,6 +112,7 @@ sentryscan/
 │   ├── sensors/                   # Stream parsers & telemetry normalizers
 │   ├── actuators/                 # Finding publishers & reporting tools
 │   ├── agents/                    # Reflex and deliberative agent implementations
+│   ├── transport/                 # Binary framing, TCP socket client/server, in-process adapter
 │   └── observability/             # Event bus, JSONL & SQLite recorders
 └── tests/                         # Comprehensive unit & integration tests
 ```
@@ -158,6 +159,7 @@ For audit and evaluation purposes, each major development milestone maintains a 
 - **Milestone 1.1:** [Agent Foundations & PEAS Taxonomy](assignments/assignment_1_1/README.md) — Comprehensive technical specification ([PDF](assignments/assignment_1_1/deliverables/SentryScan_Design_Specification.pdf)), 7-dimensional environment classification, and Unit-1 OOP vs. Agent comparative analysis.
 - **Milestone 1.2:** [Rule-Based Reflex Reasoner](assignments/assignment_1_2/README.md) — Executable Sense-Parse-Decide-Act loop, explicit condition-action rule table, malformed payload quarantine, unmatched record auditing, and monotonic `seq` JSONL event recorder.
 - **Milestone 2.1:** [Concurrency & Data Integrity](assignments/assignment_2_1/README.md) — Multi-device simulated fleet in RFC 5737 space, background monitor daemon with non-blocking heartbeat, thread-safe queue manager, lost updates race condition proof, controlled poisoning mutators with isolated ground-truth sidecar, and deterministic data-level integrity checker.
+- **Milestone 2.2:** [Socket Messaging & Autonomous Analyst](assignments/assignment_2_2/README.md) — 4-byte big-endian length-prefixed JSON binary framing, robust TCP socket client and server with reconnect/backoff, abstract `Transport` protocol with in-process adapter, and autonomous `AnalystAgent` providing adaptive scanning parameter updates in response to `ALERT` messages.
 
 To package any tagged milestone into an immutable, reproducible archive:
 ```bash
