@@ -118,6 +118,8 @@ sentryscan/
 │   ├── graphs/                    # LangGraph supervisor workflow & typed state
 │   ├── llm/                       # Provider-switchable advisory LLM layer
 │   ├── transport/                 # Binary framing, TCP socket client/server, in-process adapter
+│   ├── knowledge/                 # Vulnerability ontology, NVD 2.0 API adapter, cache & enricher
+│   ├── security/                  # Cryptographic Ed25519 identity, trusted registry & security gate
 │   └── observability/             # Event bus, JSONL & SQLite recorders
 └── tests/                         # Comprehensive unit & integration tests
 ```
@@ -169,6 +171,8 @@ For audit and evaluation purposes, each major development milestone maintains a 
 - **Milestone 3.2:** [Utility Optimization & Feasibility Filtering](assignments/assignment_3_2/README.md) — Multi-attribute normalized utility formula, hard-constraint feasibility filtering, argmax plan selection, and exhaustive mathematical verification.
 - **Milestone 4.1:** [Deliberative BDI Modelling & Reconsideration](assignments/assignment_4_1/README.md) — BeliefBase, Desires, Intentions, and compiled LangGraph Analyst workflow with autonomous intention preemption.
 - **Milestone 4.2:** [Knowledge Representation & External API Enrichment](assignments/assignment_4_2/README.md) — Vulnerability ontology, read-only NVD CVE adapter with schema validation, persistent cache, retry/backoff, offline fallback, and intention escalation.
+
+- **Milestone 5.1:** [Cryptographic Message Authentication & Security Gate](assignments/assignment_5_1/README.md) — Ephemeral Ed25519 agent identities, trusted public key registry, canonical envelope signing with SHA-256 payload integrity, bounded fail-closed anti-replay nonce cache, and multi-stage inbound security gate protecting agent BDI deliberation against tampering, spoofing, and replays.
 
 To package any tagged milestone into an immutable, reproducible archive:
 ```bash

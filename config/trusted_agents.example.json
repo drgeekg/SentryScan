@@ -1,0 +1,26 @@
+[
+  {
+    "agent_id": "supervisor-agent-01",
+    "public_key_hex": "26da97b91ff3a130f8c9d36f63ffbdf3dda9d0142ace91b906553b6f51437d56",
+    "status": "ACTIVE",
+    "description": "Authorized supervisor-agent-01 key"
+  },
+  {
+    "agent_id": "scout-agent-01",
+    "public_key_hex": "88a2cb3062014719ac27cf40f2467c4e0f753588373e6eed39a09f40cd05dab5",
+    "status": "ACTIVE",
+    "description": "Authorized scout-agent-01 key"
+  },
+  {
+    "agent_id": "triage-agent-01",
+    "public_key_hex": "b427f4209ddcf8d96ee3b24ade000471a08bcdcf84e51e8e9c684497231356f6",
+    "status": "ACTIVE",
+    "description": "Authorized triage-agent-01 key"
+  },
+  {
+    "agent_id": "analyst-agent-01",
+    "public_key_hex": "e0b0365886bac01108855c0e768f071ccad2a0cd5cc98be01309bf45cc7f1b47",
+    "status": "ACTIVE",
+    "description": "Authorized analyst-agent-01 key"
+  }
+]

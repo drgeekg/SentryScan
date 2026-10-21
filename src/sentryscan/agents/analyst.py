@@ -15,6 +15,7 @@ from sentryscan.graphs.analyst_graph import build_analyst_graph
 from sentryscan.graphs.analyst_state import AnalystGraphState, ReconsiderationRecord
 from sentryscan.knowledge.enricher import KnowledgeEnricher
 from sentryscan.knowledge.models import EnrichmentResult
+from sentryscan.security.gate import SecurityGate
 from sentryscan.transport.interface import Transport
 from sentryscan.transport.socket_transport import TCPSocketServer
 
@@ -30,11 +31,13 @@ class AnalystAgent:
         clock: Clock | None = None,
         id_gen: IdGenerator | None = None,
         enricher: KnowledgeEnricher | None = None,
+        security_gate: SecurityGate | None = None,
     ) -> None:
         self.agent_id = agent_id
         self.clock = clock if clock is not None else SystemClock()
         self.id_gen = id_gen if id_gen is not None else IdGenerator()
         self.enricher = enricher if enricher is not None else KnowledgeEnricher()
+        self.security_gate = security_gate
         self.server: TCPSocketServer | None = None
 
         # BDI State
@@ -57,6 +60,34 @@ class AnalystAgent:
 
     def process_message(self, msg: Message) -> Message | None:
         """Process incoming Message envelope and return an autonomous response Message."""
+        # Inbound Security Gate validation
+        if self.security_gate is not None:
+            verdict = self.security_gate.validate(msg)
+            if not verdict.valid:
+                logger.warning(
+                    "[%s] Security Gate rejected message %s from %s: %s",
+                    self.agent_id,
+                    msg.message_id,
+                    msg.sender,
+                    verdict.reason_summary,
+                )
+                return Message(
+                    message_id=self.id_gen.next_id("message"),
+                    run_id=msg.run_id,
+                    sender=self.agent_id,
+                    receiver=msg.sender,
+                    performative=Performative.ERROR,
+                    timestamp_utc=self.clock.now_iso(),
+                    nonce=self.id_gen.seeded_token(16),
+                    task_id=msg.task_id,
+                    payload={
+                        "error": f"Security verification rejected: {verdict.reason_code.value}",
+                        "reason_code": verdict.reason_code.value,
+                        "reason_summary": verdict.reason_summary,
+                        "original_message_id": msg.message_id,
+                    },
+                )
+
         if msg.performative == Performative.ALERT:
             return self._handle_alert(msg)
         if msg.performative == Performative.STATE_SYNC:
