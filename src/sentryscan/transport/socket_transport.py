@@ -109,14 +109,20 @@ class TCPSocketClient:
 
     def _read_loop(self) -> None:
         """Background thread reading chunks from socket and buffering frames."""
-        while not self._stop_event.is_set() and self._sock is not None:
+        while not self._stop_event.is_set():
+            sock = self._sock
+            if sock is None:
+                break
             try:
                 # Use select to check for readability
-                r_ready, _, _ = select.select([self._sock], [], [], 0.2)
+                r_ready, _, _ = select.select([sock], [], [], 0.2)
                 if not r_ready:
                     continue
 
-                chunk = self._sock.recv(4096)
+                if self._sock is None:
+                    break
+
+                chunk = sock.recv(4096)
                 if not chunk:
                     # Server closed connection
                     break
