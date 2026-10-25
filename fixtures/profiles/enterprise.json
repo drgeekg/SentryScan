@@ -1,0 +1,8 @@
+{
+  "profile": "enterprise",
+  "extends": "generic",
+  "name": "Enterprise baseline profile (comprehensive controls)",
+  "classifications": [],
+  "controls": [],
+  "frameworks": []
+}

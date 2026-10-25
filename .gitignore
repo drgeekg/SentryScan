@@ -41,6 +41,11 @@ htmlcov/
 
 # Local data & run storage
 data/runs/
+data/live/
+data/scenarios/
+*.db
+*.db-journal
+*.db-wal
 storage/*.sqlite3
 storage/*.sqlite3-shm
 storage/*.sqlite3-wal

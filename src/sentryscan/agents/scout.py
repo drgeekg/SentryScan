@@ -12,15 +12,44 @@ from sentryscan.llm.interface import LLMProvider, LLMRequest
 class ScoutAgent:
     """Agent role proposing batch allocations that maximize host coverage across the fleet."""
 
+    MIN_COVERAGE_WEIGHT: float = 0.5
+    MAX_COVERAGE_WEIGHT: float = 1.5
+    STEP_DELTA: float = 0.02
+
     def __init__(
         self,
         agent_id: str = "scout-agent",
         llm_provider: LLMProvider | None = None,
         id_gen: IdGenerator | None = None,
+        coverage_weight: float = 1.0,
     ) -> None:
         self.agent_id = agent_id
         self.llm_provider = llm_provider
         self.id_gen = id_gen if id_gen is not None else IdGenerator()
+        self.coverage_weight: float = max(
+            self.MIN_COVERAGE_WEIGHT, min(self.MAX_COVERAGE_WEIGHT, float(coverage_weight))
+        )
+
+    def update_coverage_weight(self, confirmed: bool) -> tuple[float, float]:
+        """Update bounded Scout coverage weight (+STEP_DELTA on confirmed, -STEP_DELTA on FP)."""
+        old_w = self.coverage_weight
+        delta = self.STEP_DELTA if confirmed else -self.STEP_DELTA
+        self.coverage_weight = round(
+            max(self.MIN_COVERAGE_WEIGHT, min(self.MAX_COVERAGE_WEIGHT, old_w + delta)), 4
+        )
+        return old_w, self.coverage_weight
+
+    def export_weights(self) -> dict[str, float]:
+        """Export Scout coverage weight for SQLite persistence."""
+        return {"scout_coverage_weight": float(self.coverage_weight)}
+
+    def load_weights(self, stored: dict[str, float]) -> None:
+        """Load persisted Scout coverage weight from SQLite dict."""
+        if "scout_coverage_weight" in stored:
+            self.coverage_weight = max(
+                self.MIN_COVERAGE_WEIGHT,
+                min(self.MAX_COVERAGE_WEIGHT, float(stored["scout_coverage_weight"])),
+            )
 
     def propose(
         self,
@@ -76,7 +105,7 @@ class ScoutAgent:
                 if r.get("host_id"):
                     covered_hosts.add(r["host_id"])
 
-        coverage_ratio = len(covered_hosts) / max(1, len(all_hosts))
+        coverage_ratio = min(1.0, (len(covered_hosts) / max(1, len(all_hosts))) * self.coverage_weight)
 
         # Rationale via LLM provider if available
         rationale = (

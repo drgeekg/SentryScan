@@ -6,7 +6,7 @@ import logging
 import threading
 from typing import Any
 
-from sentryscan.bdi.beliefs import BeliefBase
+from sentryscan.bdi.beliefs import BeliefBase, HostStatus
 from sentryscan.bdi.intentions import Intention
 from sentryscan.common.clock import Clock, SystemClock
 from sentryscan.common.id_generator import IdGenerator
@@ -28,17 +28,25 @@ class AnalystAgent:
     def __init__(
         self,
         agent_id: str = "analyst-agent-01",
+        tier: str = "FULL",
         clock: Clock | None = None,
         id_gen: IdGenerator | None = None,
         enricher: KnowledgeEnricher | None = None,
         security_gate: SecurityGate | None = None,
+        clean_cycles_for_decay: int = 10,
+        decay_step_ms: int = 100,
     ) -> None:
         self.agent_id = agent_id
+        self.tier = tier.upper()
         self.clock = clock if clock is not None else SystemClock()
         self.id_gen = id_gen if id_gen is not None else IdGenerator()
         self.enricher = enricher if enricher is not None else KnowledgeEnricher()
         self.security_gate = security_gate
         self.server: TCPSocketServer | None = None
+        self.clean_cycles_for_decay = max(1, clean_cycles_for_decay)
+        self.decay_step_ms = max(10, decay_step_ms)
+        self.current_cadence_ms: int = 500
+        self.clean_cycle_streak: int = 0
 
         # BDI State
         self.belief_base = BeliefBase()
@@ -184,6 +192,51 @@ class AnalystAgent:
         priority_ports = action_data.get("priority_ports", [])
         quarantine_flag = action_data.get("quarantine_flag", False)
         rationale = action_data.get("rationale", "")
+        escalate_to: str | None = None
+        if self.tier == "L1":
+            quarantine_flag = False
+            if severity in ("HIGH", "CRITICAL"):
+                escalate_to = "L2"
+                action = "ESCALATE_L2"
+                rationale = (
+                    f"[L1 Triage] Escalating {severity} finding ({finding_id}) "
+                    f"on {target_host} to L2 Incident Correlation."
+                )
+        elif self.tier == "L2":
+            quarantine_flag = False
+            if severity == "CRITICAL":
+                escalate_to = "L3"
+                action = "ESCALATE_L3"
+                rationale = (
+                    f"[L2 Incident] Confirmed critical exposure ({finding_id}) "
+                    f"on {target_host} — escalating to L3 Containment for host quarantine."
+                )
+        elif self.tier == "L3" and severity == "CRITICAL":
+            confidence = float(payload.get("confidence", 1.0))
+            remote_exp = bool(
+                payload.get("remote_exploitable")
+                or rule_id in ("RULE-004", "RULE-005")
+                or (enrichment and enrichment.cve_id)
+                or cve_id
+            )
+            if confidence >= 0.95 and remote_exp:
+                quarantine_flag = True
+                action = "QUARANTINE_HOST"
+                if target_host in self.belief_base.hosts:
+                    self.belief_base.quarantine_host(target_host)
+            else:
+                quarantine_flag = False
+                action = "PENDING_QUARANTINE"
+                if target_host in self.belief_base.hosts:
+                    self.belief_base.hosts[target_host].quarantined = False
+                    self.belief_base.hosts[target_host].status = HostStatus.COMPROMISED
+                    if target_host in self.belief_base.fleet.quarantined_hosts:
+                        self.belief_base.fleet.quarantined_hosts.remove(target_host)
+                rationale = (
+                    f"[L3 Containment] Holding {target_host} in pending_quarantine "
+                    f"(confidence={confidence:.2f}, remote_exploitable={remote_exp}); "
+                    "awaiting human operator approval."
+                )
 
         # Fallback rationale formatting
         if not rationale:
@@ -213,6 +266,11 @@ class AnalystAgent:
             )
 
         # Update backwards-compatible dictionary view
+        if int(scan_interval_ms) < self.current_cadence_ms:
+            self.current_cadence_ms = int(scan_interval_ms)
+        if severity in ("HIGH", "CRITICAL"):
+            self.clean_cycle_streak = 0
+
         self._beliefs_compat[target_host] = {
             "severity": severity,
             "finding_id": finding_id,
@@ -226,10 +284,22 @@ class AnalystAgent:
         reply_payload: dict[str, Any] = {
             "target_host": target_host,
             "correlated_finding_id": finding_id,
+            "rule_id": rule_id,
+            "tier": self.tier,
+            "escalate_to": escalate_to,
             "action": action,
             "scan_interval_ms": scan_interval_ms,
             "priority_ports": priority_ports,
             "quarantine_flag": quarantine_flag,
+            "pending_quarantine": action == "PENDING_QUARANTINE",
+            "auto_approved": self.tier == "L3" and quarantine_flag,
+            "confidence": float(payload.get("confidence", 1.0)),
+            "remote_exploitable": bool(
+                payload.get("remote_exploitable")
+                or rule_id in ("RULE-004", "RULE-005")
+                or (enrichment and enrichment.cve_id)
+                or cve_id
+            ),
             "rationale": rationale,
         }
 
@@ -264,6 +334,65 @@ class AnalystAgent:
             nonce=self.id_gen.seeded_token(16),
             task_id=msg.task_id,
             payload={"status": "STATE_ACKNOWLEDGED", "agent_id": self.agent_id},
+        )
+
+    def record_cycle_outcome(
+        self,
+        has_threats: bool,
+        run_id: str,
+        recorder: Any | None = None,
+    ) -> Message | None:
+        """Track clean cycles and relax scan cadence toward 500ms in steps after N clean cycles."""
+        from sentryscan.contracts.events import EventStatus, EventType
+
+        if has_threats:
+            self.clean_cycle_streak = 0
+            return None
+
+        self.clean_cycle_streak += 1
+        if self.clean_cycle_streak < self.clean_cycles_for_decay or self.current_cadence_ms >= 500:
+            return None
+
+        prev_ms = self.current_cadence_ms
+        self.current_cadence_ms = min(500, self.current_cadence_ms + self.decay_step_ms)
+        for host_belief in self.belief_base.hosts.values():
+            if host_belief.scan_cadence_ms < self.current_cadence_ms:
+                host_belief.scan_cadence_ms = self.current_cadence_ms
+
+        rationale = (
+            f"[{self.agent_id}] {self.clean_cycle_streak} consecutive clean cycles "
+            f"(threshold={self.clean_cycles_for_decay}); relaxing scan cadence "
+            f"{prev_ms}ms -> {self.current_cadence_ms}ms."
+        )
+        if recorder is not None:
+            recorder.record(
+                event_type=EventType.PARAMS_UPDATE,
+                component=self.agent_id,
+                status=EventStatus.OK,
+                reason_code="CADENCE_DECAY",
+                details={
+                    "previous_scan_interval_ms": prev_ms,
+                    "scan_interval_ms": self.current_cadence_ms,
+                    "clean_cycle_streak": self.clean_cycle_streak,
+                    "threshold": self.clean_cycles_for_decay,
+                    "rationale": rationale,
+                },
+            )
+        return Message(
+            message_id=self.id_gen.next_id("message"),
+            run_id=run_id,
+            sender=self.agent_id,
+            receiver="supervisor-agent",
+            performative=Performative.PARAMS_UPDATE,
+            timestamp_utc=self.clock.now_iso(),
+            nonce=self.id_gen.seeded_token(16),
+            payload={
+                "action": "CADENCE_DECAY",
+                "previous_scan_interval_ms": prev_ms,
+                "scan_interval_ms": self.current_cadence_ms,
+                "clean_cycle_streak": self.clean_cycle_streak,
+                "rationale": rationale,
+            },
         )
 
     def start_server(self, host: str = "127.0.0.1", port: int = 8765) -> int:

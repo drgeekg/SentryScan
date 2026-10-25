@@ -1,0 +1,16 @@
+{
+  "profile": "healthcare",
+  "extends": "generic",
+  "name": "Healthcare example (adds PHI classification and control)",
+  "classifications": [
+    {"id": "PHI", "name": "Protected health record id", "severity": "CRITICAL",
+     "patterns": ["\\bMRN-\\d{6}\\b"], "samples": ["record MRN-482913 admitted"]}
+  ],
+  "controls": [
+    {"id": "CTL-09", "name": "Health records not publicly exposed", "category": "Data protection", "check": {"type": "radar_exposure", "classifications": ["PHI", "HEALTH"]}, "description": "Health data must never be in public stores."}
+  ],
+  "frameworks": [
+    {"id": "baseline", "mappings": {"CTL-09": "B9"}},
+    {"id": "iso27001", "mappings": {"CTL-09": "A.5.34"}}
+  ]
+}

@@ -169,7 +169,7 @@ class IntegrityChecker:
             "smb",
         }
         if record.service.lower() in non_http_services and (
-            "http/1.1" in banner_lower or "server: apache" in banner_lower
+            "http/1.1" in banner_lower or "server: apache" in banner_lower or "apache/" in banner_lower
         ):
             flags.append(
                 IntegrityFlag(

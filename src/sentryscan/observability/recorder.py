@@ -83,6 +83,7 @@ class EventRecorder:
             # 2. Sink: Persist to SQLite run store if enabled
             if self.sqlite_store is not None:
                 self.sqlite_store.save_event(event)
+                self.sqlite_store._recorder = self  # type: ignore[attr-defined]
 
             self._events.append(event)
             return event

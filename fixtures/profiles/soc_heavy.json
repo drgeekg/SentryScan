@@ -1,0 +1,8 @@
+{
+  "profile": "soc_heavy",
+  "extends": "generic",
+  "name": "SOC Heavy profile (accelerated anomaly detection and sensitivity)",
+  "classifications": [],
+  "controls": [],
+  "frameworks": []
+}

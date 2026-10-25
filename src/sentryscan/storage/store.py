@@ -25,6 +25,7 @@ class SQLiteRunStore:
         self._lock = threading.Lock()
         self._conn = sqlite3.connect(self.db_path, check_same_thread=False)
         self._conn.row_factory = sqlite3.Row
+        self._recorder: Any = None
         self.init_db()
 
     def init_db(self) -> None:
@@ -139,6 +140,57 @@ class SQLiteRunStore:
                     FOREIGN KEY (run_id) REFERENCES runs (run_id)
                 );
                 CREATE INDEX IF NOT EXISTS idx_llm_run ON llm_calls (run_id);
+
+                CREATE TABLE IF NOT EXISTS reports (
+                    report_id TEXT PRIMARY KEY,
+                    run_id TEXT NOT NULL,
+                    created_at TEXT NOT NULL,
+                    window_name TEXT NOT NULL,
+                    posture_score INTEGER NOT NULL DEFAULT 100,
+                    threat_level TEXT NOT NULL,
+                    summary_md TEXT NOT NULL,
+                    data_json TEXT NOT NULL DEFAULT '{}',
+                    FOREIGN KEY (run_id) REFERENCES runs (run_id)
+                );
+                CREATE INDEX IF NOT EXISTS idx_reports_run ON reports (run_id);
+
+                CREATE TABLE IF NOT EXISTS ground_truth (
+                    record_id TEXT PRIMARY KEY,
+                    run_id TEXT NOT NULL,
+                    host_id TEXT NOT NULL,
+                    cycle INTEGER NOT NULL DEFAULT 1,
+                    is_vulnerable INTEGER NOT NULL DEFAULT 0,
+                    expected_rules_json TEXT NOT NULL DEFAULT '[]',
+                    is_poisoned INTEGER NOT NULL DEFAULT 0,
+                    injection_type TEXT,
+                    FOREIGN KEY (run_id) REFERENCES runs (run_id)
+                );
+                CREATE INDEX IF NOT EXISTS idx_ground_truth_run_host
+                ON ground_truth (run_id, host_id);
+
+                CREATE TABLE IF NOT EXISTS pending_quarantine (
+                    quarantine_id TEXT PRIMARY KEY,
+                    run_id TEXT NOT NULL,
+                    host_id TEXT NOT NULL,
+                    finding_id TEXT NOT NULL,
+                    rule_id TEXT NOT NULL,
+                    confidence REAL NOT NULL DEFAULT 1.0,
+                    remote_exploitable INTEGER NOT NULL DEFAULT 0,
+                    status TEXT NOT NULL DEFAULT 'PENDING',
+                    decided_by TEXT,
+                    decided_at TEXT,
+                    created_at TEXT NOT NULL,
+                    rationale TEXT NOT NULL DEFAULT '',
+                    FOREIGN KEY (run_id) REFERENCES runs (run_id)
+                );
+                CREATE INDEX IF NOT EXISTS idx_pending_quarantine_run
+                ON pending_quarantine (run_id, status);
+
+                CREATE TABLE IF NOT EXISTS bidder_weights (
+                    weight_key TEXT PRIMARY KEY,
+                    weight_val REAL NOT NULL,
+                    updated_at TEXT NOT NULL
+                );
             """)
 
     def save_run(
@@ -593,6 +645,427 @@ class SQLiteRunStore:
             "id_alignment": ids_match,
             "total_seqs": sqlite_count,
         }
+
+    def save_report(
+        self,
+        report_id: str,
+        run_id: str,
+        created_at: str,
+        window_name: str,
+        posture_score: int,
+        threat_level: str,
+        summary_md: str,
+        data_json: str = "{}",
+    ) -> None:
+        """Save a posture & incident analysis report."""
+        with self._lock, self._conn:
+            self._conn.execute(
+                """
+                INSERT OR REPLACE INTO reports (
+                    report_id, run_id, created_at, window_name, posture_score,
+                    threat_level, summary_md, data_json
+                ) VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+                """,
+                (
+                    report_id, run_id, created_at, window_name, posture_score,
+                    threat_level, summary_md, data_json,
+                ),
+            )
+
+    def get_reports(self, run_id: str) -> list[dict[str, Any]]:
+        """Retrieve all generated reports for a run ordered newest first."""
+        with self._lock:
+            cursor = self._conn.execute(
+                """
+                SELECT report_id, run_id, created_at, window_name, posture_score,
+                       threat_level, summary_md, data_json
+                FROM reports WHERE run_id = ? ORDER BY created_at DESC
+                """,
+                (run_id,),
+            )
+            rows = cursor.fetchall()
+            return [
+                {
+                    "report_id": r[0],
+                    "run_id": r[1],
+                    "created_at": r[2],
+                    "window_name": r[3],
+                    "posture_score": r[4],
+                    "threat_level": r[5],
+                    "summary_md": r[6],
+                    "data": json.loads(r[7]) if r[7] else {},
+                }
+                for r in rows
+            ]
+
+    def save_ground_truth(
+        self,
+        record_id: str,
+        run_id: str,
+        host_id: str,
+        cycle: int = 1,
+        is_vulnerable: bool = False,
+        expected_rules: list[str] | None = None,
+        is_poisoned: bool = False,
+        injection_type: str | None = None,
+    ) -> None:
+        """Persist evaluator-only ground truth for a telemetry record."""
+        rules_json = json.dumps(expected_rules or [])
+        with self._lock, self._conn:
+            self._conn.execute(
+                """
+                INSERT OR REPLACE INTO ground_truth (
+                    record_id, run_id, host_id, cycle,
+                    is_vulnerable, expected_rules_json, is_poisoned, injection_type
+                ) VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+                """,
+                (
+                    record_id,
+                    run_id,
+                    host_id,
+                    cycle,
+                    1 if is_vulnerable else 0,
+                    rules_json,
+                    1 if is_poisoned else 0,
+                    injection_type,
+                ),
+            )
+
+    def get_ground_truth(self, run_id: str) -> list[dict[str, Any]]:
+        """Retrieve evaluator-only ground truth rows for a run."""
+        with self._lock:
+            cur = self._conn.execute(
+                "SELECT * FROM ground_truth WHERE run_id = ? ORDER BY cycle ASC, record_id ASC",
+                (run_id,),
+            )
+            rows = []
+            for row in cur.fetchall():
+                d = dict(row)
+                d["is_vulnerable"] = bool(d["is_vulnerable"])
+                d["is_poisoned"] = bool(d["is_poisoned"])
+                d["expected_rules"] = json.loads(d.pop("expected_rules_json", "[]"))
+                rows.append(d)
+            return rows
+
+    def compute_eval_metrics(self, run_id: str) -> dict[str, Any]:
+        """Compute detection precision/recall, false-quarantine rate, time-to-contain, and cost/cycle."""
+        gt_rows = self.get_ground_truth(run_id)
+        findings = self.get_findings(run_id)
+        messages = self.get_messages(run_id)
+        events = self.get_events(run_id, from_seq=1, limit=100000)
+
+        # 1. Detection Precision & Recall over (host_id, rule_id) pairs
+        expected_pairs: set[tuple[str, str]] = set()
+        vulnerable_hosts: set[str] = set()
+        first_vuln_cycle: dict[str, int] = {}
+        all_hosts: set[str] = set()
+        max_cycle = 1
+
+        for g in gt_rows:
+            hid = g["host_id"]
+            cyc = int(g.get("cycle", 1))
+            if cyc > max_cycle:
+                max_cycle = cyc
+            all_hosts.add(hid)
+            if g["is_vulnerable"] and not g["is_poisoned"]:
+                vulnerable_hosts.add(hid)
+                if hid not in first_vuln_cycle or cyc < first_vuln_cycle[hid]:
+                    first_vuln_cycle[hid] = cyc
+                for r_id in g["expected_rules"]:
+                    expected_pairs.add((hid, r_id))
+
+        detected_pairs: set[tuple[str, str]] = {
+            (f["host_id"], f["rule_id"]) for f in findings
+        }
+        tp = len(detected_pairs & expected_pairs)
+        fp = len(detected_pairs - expected_pairs)
+        fn = len(expected_pairs - detected_pairs)
+        precision = tp / (tp + fp) if (tp + fp) > 0 else 1.0
+        recall = tp / (tp + fn) if (tp + fn) > 0 else 1.0
+
+        # 2. False-Quarantine Rate (quarantined non-vulnerable hosts / total quarantined hosts)
+        quarantined_hosts: set[str] = {
+            f["host_id"] for f in findings if f.get("quarantined")
+        }
+        for e in events:
+            if e["event_type"] == "run_completed":
+                q_list = e["details"].get("quarantined_hosts", [])
+                quarantined_hosts.update(q_list)
+        false_quarantined = quarantined_hosts - vulnerable_hosts
+        false_quarantine_rate = (
+            len(false_quarantined) / len(quarantined_hosts)
+            if quarantined_hosts
+            else 0.0
+        )
+
+        # 3. Time-to-Contain (in cycles) for quarantined vulnerable hosts
+        contain_cycle: dict[str, int] = {}
+        for f in findings:
+            if f.get("quarantined"):
+                hid = f["host_id"]
+                f_cyc = int(f.get("evidence", {}).get("cycle", 1))
+                if hid not in contain_cycle or f_cyc < contain_cycle[hid]:
+                    contain_cycle[hid] = f_cyc
+        ttc_values = [
+            max(1, contain_cycle[h] - first_vuln_cycle.get(h, 1) + 1)
+            for h in (quarantined_hosts & vulnerable_hosts)
+            if h in contain_cycle
+        ]
+        time_to_contain_cycles = (
+            sum(ttc_values) / len(ttc_values) if ttc_values else 0.0
+        )
+
+        # 4. Cost per cycle from ACCEPTED proposals
+        proposals_by_id: dict[str, float] = {}
+        for m in messages:
+            if m["performative"] == "PROPOSE":
+                prop = m["payload"].get("proposal", {})
+                pid = prop.get("proposal_id")
+                if pid:
+                    proposals_by_id[pid] = float(prop.get("est_cost", 0.0))
+        total_cost = 0.0
+        accept_count = 0
+        for m in messages:
+            if m["performative"] == "ACCEPT":
+                pid = m["payload"].get("proposal_id")
+                total_cost += proposals_by_id.get(pid, 0.0)
+                accept_count += 1
+        cycles_count = max(max_cycle, accept_count, 1)
+        cost_per_cycle = total_cost / cycles_count
+
+        return {
+            "detection_precision": round(precision, 4),
+            "detection_recall": round(recall, 4),
+            "false_quarantine_rate": round(false_quarantine_rate, 4),
+            "time_to_contain_cycles": round(time_to_contain_cycles, 4),
+            "cost_per_cycle": round(cost_per_cycle, 4),
+            "true_positives": tp,
+            "false_positives": fp,
+            "false_negatives": fn,
+            "quarantined_hosts": sorted(quarantined_hosts),
+            "cycles": cycles_count,
+        }
+
+    def save_pending_quarantine(
+        self,
+        quarantine_id: str,
+        run_id: str,
+        host_id: str,
+        finding_id: str,
+        rule_id: str,
+        confidence: float = 1.0,
+        remote_exploitable: bool = False,
+        status: str = "PENDING",
+        decided_by: str | None = None,
+        decided_at: str | None = None,
+        created_at: str = "2026-10-21T00:00:00Z",
+        rationale: str = "",
+    ) -> dict[str, Any]:
+        """Persist a pending or auto-approved quarantine request."""
+        with self._lock, self._conn:
+            self._conn.execute(
+                """
+                INSERT OR REPLACE INTO pending_quarantine (
+                    quarantine_id, run_id, host_id, finding_id, rule_id,
+                    confidence, remote_exploitable, status, decided_by, decided_at,
+                    created_at, rationale
+                ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                """,
+                (
+                    quarantine_id,
+                    run_id,
+                    host_id,
+                    finding_id,
+                    rule_id,
+                    confidence,
+                    1 if remote_exploitable else 0,
+                    status,
+                    decided_by,
+                    decided_at,
+                    created_at,
+                    rationale,
+                ),
+            )
+            if status in ("APPROVED", "AUTO_APPROVED"):
+                self._conn.execute(
+                    "UPDATE findings SET quarantined = 1 WHERE run_id = ? AND host_id = ?",
+                    (run_id, host_id),
+                )
+        return {
+            "quarantine_id": quarantine_id,
+            "run_id": run_id,
+            "host_id": host_id,
+            "finding_id": finding_id,
+            "rule_id": rule_id,
+            "confidence": confidence,
+            "remote_exploitable": remote_exploitable,
+            "status": status,
+            "decided_by": decided_by,
+            "decided_at": decided_at,
+            "created_at": created_at,
+            "rationale": rationale,
+        }
+
+    def get_pending_quarantines(
+        self, run_id: str, status: str | None = None
+    ) -> list[dict[str, Any]]:
+        """Retrieve pending_quarantine records for a run."""
+        with self._lock:
+            if status:
+                cur = self._conn.execute(
+                    "SELECT * FROM pending_quarantine WHERE run_id = ? AND status = ? "
+                    "ORDER BY created_at DESC",
+                    (run_id, status),
+                )
+            else:
+                cur = self._conn.execute(
+                    "SELECT * FROM pending_quarantine WHERE run_id = ? ORDER BY created_at DESC",
+                    (run_id,),
+                )
+            rows = []
+            for row in cur.fetchall():
+                d = dict(row)
+                d["remote_exploitable"] = bool(d["remote_exploitable"])
+                rows.append(d)
+            return rows
+
+    def decide_pending_quarantine(
+        self,
+        quarantine_id: str,
+        decision: str,
+        decided_by: str = "human-operator",
+        decided_at: str = "2026-10-21T00:00:00Z",
+    ) -> dict[str, Any] | None:
+        """Approve or reject a pending quarantine record, updating findings and logging an event."""
+        norm_dec = decision.upper()
+        if norm_dec not in ("APPROVED", "REJECTED", "APPROVE", "REJECT"):
+            raise ValueError(f"Invalid quarantine decision: {decision}")
+        final_status = "APPROVED" if norm_dec.startswith("APPROV") else "REJECTED"
+
+        with self._lock, self._conn:
+            cur = self._conn.execute(
+                "SELECT * FROM pending_quarantine WHERE quarantine_id = ?",
+                (quarantine_id,),
+            )
+            row = cur.fetchone()
+            if not row:
+                return None
+            rec = dict(row)
+            run_id = rec["run_id"]
+            host_id = rec["host_id"]
+            finding_id = rec["finding_id"]
+            rule_id = rec["rule_id"]
+
+            self._conn.execute(
+                """
+                UPDATE pending_quarantine
+                SET status = ?, decided_by = ?, decided_at = ?
+                WHERE quarantine_id = ?
+                """,
+                (final_status, decided_by, decided_at, quarantine_id),
+            )
+            if final_status == "APPROVED":
+                self._conn.execute(
+                    "UPDATE findings SET quarantined = 1 WHERE run_id = ? AND host_id = ?",
+                    (run_id, host_id),
+                )
+            else:
+                self._conn.execute(
+                    "UPDATE findings SET quarantined = 0 WHERE run_id = ? AND host_id = ?",
+                    (run_id, host_id),
+                )
+
+            rec["status"] = final_status
+            rec["decided_by"] = decided_by
+            rec["decided_at"] = decided_at
+            rec["remote_exploitable"] = bool(rec["remote_exploitable"])
+
+        evt_details = {
+            "quarantine_id": quarantine_id,
+            "who": decided_by,
+            "what": final_status,
+            "when": decided_at,
+            "host_id": host_id,
+            "finding_id": finding_id,
+        }
+        if self._recorder is not None and not getattr(self._recorder._file, "closed", True):
+            from sentryscan.contracts.events import EventStatus, EventType
+
+            self._recorder.record(
+                event_type=EventType.STATE_TRANSITION,
+                component=decided_by,
+                status=EventStatus.OK if final_status == "APPROVED" else EventStatus.REJECTED,
+                host_id=host_id,
+                finding_id=finding_id,
+                rule_id=rule_id,
+                reason_code=f"QUARANTINE_{final_status}",
+                details=evt_details,
+            )
+        else:
+            with self._lock, self._conn:
+                cur = self._conn.execute(
+                    "SELECT COALESCE(MAX(seq), 0) FROM events WHERE run_id = ?", (run_id,)
+                )
+                next_seq = cur.fetchone()[0] + 1
+                self._conn.execute(
+                    """
+                    INSERT OR REPLACE INTO events (
+                        event_id, run_id, seq, timestamp_utc, event_type, component,
+                        status, record_id, host_id, rule_id, finding_id, reason_code, details_json
+                    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                    """,
+                    (
+                        f"evt-{next_seq:06d}",
+                        run_id,
+                        next_seq,
+                        decided_at,
+                        "state_transition",
+                        decided_by,
+                        "OK" if final_status == "APPROVED" else "REJECTED",
+                        None,
+                        host_id,
+                        rule_id,
+                        finding_id,
+                        f"QUARANTINE_{final_status}",
+                        json.dumps(evt_details),
+                    ),
+                )
+        if final_status == "APPROVED":
+            from sentryscan.agents.remediator import RemediatorAgent
+
+            host_findings = [
+                f for f in self.get_findings(run_id=run_id) if f.get("host_id") == host_id
+            ]
+            remediator = RemediatorAgent()
+            plan = remediator.remediate_and_store(
+                store=self,
+                run_id=run_id,
+                host_id=host_id,
+                findings=host_findings,
+                recorder=self._recorder,
+            )
+            rec["remediation_report_id"] = plan["report_id"]
+        return rec
+
+    def save_bidder_weights(
+        self, weights: dict[str, float], updated_at: str = "2026-10-21T00:00:00Z"
+    ) -> None:
+        """Persist Triage port weights and Scout coverage weight in SQLite."""
+        with self._lock, self._conn:
+            for k, v in weights.items():
+                self._conn.execute(
+                    """
+                    INSERT OR REPLACE INTO bidder_weights (weight_key, weight_val, updated_at)
+                    VALUES (?, ?, ?)
+                    """,
+                    (str(k), float(v), updated_at),
+                )
+
+    def get_bidder_weights(self) -> dict[str, float]:
+        """Retrieve persisted bidder weights from SQLite."""
+        with self._lock:
+            cur = self._conn.execute("SELECT weight_key, weight_val FROM bidder_weights")
+            return {str(row["weight_key"]): float(row["weight_val"]) for row in cur.fetchall()}
 
     def close(self) -> None:
         """Close database connection."""

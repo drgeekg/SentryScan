@@ -12,15 +12,47 @@ from sentryscan.llm.interface import LLMProvider, LLMRequest
 class TriageAgent:
     """Agent role proposing batch allocations prioritizing critical and high-severity risks."""
 
+    MIN_WEIGHT: float = 0.05
+    MAX_WEIGHT: float = 1.0
+    STEP_DELTA: float = 0.05
+
     def __init__(
         self,
         agent_id: str = "triage-agent",
         llm_provider: LLMProvider | None = None,
         id_gen: IdGenerator | None = None,
+        port_weights: dict[int | str, float] | None = None,
     ) -> None:
         self.agent_id = agent_id
         self.llm_provider = llm_provider
         self.id_gen = id_gen if id_gen is not None else IdGenerator()
+        default_w: dict[int | str, float] = {23: 0.8, 22: 0.7, 443: 0.5, 80: 0.6, 21: 0.5, "default": 0.2}
+        if port_weights:
+            for k, v in port_weights.items():
+                key = int(k) if str(k).isdigit() else str(k)
+                default_w[key] = max(self.MIN_WEIGHT, min(self.MAX_WEIGHT, float(v)))
+        self.port_weights: dict[int | str, float] = default_w
+
+    def update_port_weight(self, port: int | str, confirmed: bool) -> tuple[float, float]:
+        """Update bounded port risk weight (+STEP_DELTA on confirmed, -STEP_DELTA on false positive)."""
+        key: int | str = int(port) if str(port).isdigit() else str(port)
+        old_w = float(self.port_weights.get(key, self.port_weights.get("default", 0.2)))
+        delta = self.STEP_DELTA if confirmed else -self.STEP_DELTA
+        new_w = round(max(self.MIN_WEIGHT, min(self.MAX_WEIGHT, old_w + delta)), 4)
+        self.port_weights[key] = new_w
+        return old_w, new_w
+
+    def export_weights(self) -> dict[str, float]:
+        """Export port weights with string keys for SQLite persistence."""
+        return {f"triage_port_{k}": float(v) for k, v in self.port_weights.items()}
+
+    def load_weights(self, stored: dict[str, float]) -> None:
+        """Load persisted weights from SQLite dict."""
+        for k, v in stored.items():
+            if k.startswith("triage_port_"):
+                raw = k.removeprefix("triage_port_")
+                key: int | str = int(raw) if raw.isdigit() else raw
+                self.port_weights[key] = max(self.MIN_WEIGHT, min(self.MAX_WEIGHT, float(v)))
 
     def propose(
         self,
@@ -42,14 +74,16 @@ class TriageAgent:
                 service = str(r.get("service", "")).lower()
                 banner = str(r.get("banner", "")).lower()
 
-                if port == 23 or "telnet" in service:
-                    risk_score += 0.8
+                if port in self.port_weights:
+                    risk_score += self.port_weights[port]
+                elif port == 23 or "telnet" in service:
+                    risk_score += self.port_weights.get(23, 0.8)
                 elif "openssh 7.2" in banner or port == 22:
-                    risk_score += 0.7
+                    risk_score += self.port_weights.get(22, 0.7)
                 elif "tls 1.0" in banner or port == 443:
-                    risk_score += 0.5
+                    risk_score += self.port_weights.get(443, 0.5)
                 else:
-                    risk_score += 0.2
+                    risk_score += self.port_weights.get("default", 0.2)
 
             cost = 10.0 + len(records) * 1.5
             time_ms = 40.0 + len(records) * 12.0

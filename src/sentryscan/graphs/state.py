@@ -30,5 +30,7 @@ class SupervisorState(TypedDict, total=False):
     findings: Annotated[list[Finding], operator.add]
     analyst_replies: Annotated[list[Message], operator.add]
     quarantined_hosts: Annotated[list[str], operator.add]
+    pending_quarantines: Annotated[list[dict[str, Any]], operator.add]
+    weight_updates: Annotated[list[dict[str, Any]], operator.add]
     errors: Annotated[list[str], operator.add]
     metadata: dict[str, Any]

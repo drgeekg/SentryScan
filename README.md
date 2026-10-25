@@ -3,132 +3,98 @@
 [![CI Pipeline](https://github.com/drgeekg/SentryScan/actions/workflows/ci.yml/badge.svg)](https://github.com/drgeekg/SentryScan/actions/workflows/ci.yml)
 [![Python Version](https://img.shields.io/badge/python-3.11%20%7C%203.12-blue.svg)](https://www.python.org/)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
-[![Architecture Status](https://img.shields.io/badge/architecture-v1.2-purple.svg)](docs/hld/SentryScan_HLD_v1.2.md)
+[![Architecture Status](https://img.shields.io/badge/architecture-v2.0-purple.svg)](docs/hld/SentryScan_HLD_v1.2.md)
 [![Determinism](https://img.shields.io/badge/audit-deterministic-success.svg)](#determinism-contract)
 
-**Autonomous Security Telemetry Analysis & Vulnerability Assessment Platform**  
-*Deterministic Triage, Multi-Agent Coordination, and Verifiable Security Intelligence.*
+**Autonomous Agentic Security Telemetry Analysis & Cyber Risk Intelligence Platform**  
+*Continuous Multi-Agent Coordination, Data Discovery, Compliance Posture, and Grounded Threat Copilot.*
 
 ---
 
 ## 1. Overview & Purpose
 
-Modern enterprise networks generate vast amounts of operational security telemetry—service banners, TLS configurations, listening ports, and device state announcements. Security Operations Centers (SOCs) face two critical hurdles:
+Modern enterprise networks generate vast amounts of operational security telemetry—service banners, TLS configurations, listening ports, device announcements, and sensitive data access patterns. Security Operations Centers (SOCs) face two critical hurdles:
 1. **Severe Alert Fatigue:** High volumes of uncorrelated, noisy alerts obscure critical vulnerabilities.
 2. **Operational Fragility of Active Probing:** Intrusive port scanning, packet fuzzing, and live exploit checks can disrupt fragile production services, trigger network locks, or violate compliance policies.
 
-**SentryScan** solves this by providing a **non-intrusive, autonomous agentic platform** for continuous security posture evaluation. Instead of probing live network targets, SentryScan continuously ingests, normalizes, and analyzes streaming endpoint telemetry. It identifies authentic vulnerabilities through deterministic rule tables, detects telemetry tampering via statistical and structural integrity checks, and orchestrates multi-agent task allocation to prioritize high-risk remediation.
+**SentryScan** solves this by providing a **non-intrusive, autonomous agentic platform** for continuous security posture evaluation. Instead of probing live network targets, SentryScan continuously ingests, normalizes, and analyzes streaming endpoint telemetry. It identifies authentic vulnerabilities through deterministic rule tables, detects telemetry tampering via statistical and structural integrity checks, and orchestrates an autonomous agent collective to prioritize, contain, and remediate high-risk threats.
 
 ---
 
-## 2. System Architecture
+## 2. Platform Architecture: The Three Core Pillars
 
-SentryScan combines classical deliberative agent paradigms with modern multi-agent orchestration:
+SentryScan organizes autonomous defense into three synchronized, enterprise-grade modules:
 
-```text
-       +------------------------------------------------------------------+
-       |               Simulated Enterprise Endpoint Fleet                |
-       |             (RFC 5737 / RFC 3849 Synthetic IP Space)             |
-       +------------------------------------------------------------------+
-                                        |
-                         Raw Telemetry Stream (JSON)
-                                        v
-       +------------------------------------------------------------------+
-       |                    Sensors & Ingestion Layer                     |
-       |   - Schema Validation & Parser       - Injected Clock Binding    |
-       |   - Malformed Payload Quarantine     - Documented Display IP     |
-       +------------------------------------------------------------------+
-                                        |
-       +--------------------------------+---------------------------------+
-       |                                                                  |
-       v                                                                  v
-+-------------------------------+              +----------------------------------+
-|    Data-Integrity Checker     |              |     Reflex Condition-Action      |
-|  - Stale Timestamp Detection  |              |           Rule Engine            |
-|  - Service/Banner Contradict  |              |  - Explicit IF-THEN Table        |
-|  - Baseline Drift Anomalies   |              |  - Deterministic Severity/Score  |
-+-------------------------------+              +----------------------------------+
-       |                                                                  |
-       +--------------------------------+---------------------------------+
-                                        v
-       +------------------------------------------------------------------+
-       |           Audit & Single-Writer Event Recorder (seq)             |
-       |  - Append-Only JSONL Trace           - Queryable SQLite Run Store|
-       +------------------------------------------------------------------+
-                                        |
-                                        v
-       +------------------------------------------------------------------+
-       |             Future Multi-Agent Orchestration (v0.5+)             |
-       |  - LangGraph Supervisor Graph        - Scout vs Triage Contract  |
-       |  - Mathematical Utility Maximizer    - Deliberative BDI Engine   |
-       |  - Ed25519 Cryptographic Gate        - Switchable Advisory LLM   |
-       +------------------------------------------------------------------+
+| Module | Codename | Primary Mission | Key Capabilities |
+| :--- | :--- | :--- | :--- |
+| **Agentic SOC** | **VIGIL** | Autonomous threat detection, triage & rapid containment | • LangGraph Multi-Agent Supervisor (`ScoutAgent`, `TriageAgent`, `RemediatorAgent`)<br>• Contract-Net negotiation & bid optimization<br>• Multi-stage BDI deliberation (Beliefs, Desires, Intentions)<br>• Automated dry-run iptables / nftables host containment playbooks |
+| **Data Discovery** | **SENTRA** | Sensitive data asset discovery & exposure classification | • Real-time detection across PII, Financial, Health/PHI, Credentials & IP<br>• Public vs. Private source exposure classification<br>• Asset criticality scoring & sensitive data mapping |
+| **Compliance & Posture** | **POLARIS** | Continuous automated compliance & governance controls | • Continuous controls evaluation across Baseline, ISO 27001, and NIST CSF<br>• Dynamic profile inheritance (`enterprise`, `healthcare`, `soc_heavy`, `generic`)<br>• Evidence freshness monitoring & audit-ready traceability |
+
+---
+
+## 3. Platform Visual Interface & Capabilities
+
+### Master Cyber Console & Multi-Agent Network Topology
+Interactive visual command center rendering real-time BDI state transitions, Contract-Net negotiation bids, live agent network topology, and event timelines.
+
+![Master Cyber Console](screenshots/10_master_console_active_pipeline.png)
+
+---
+
+### Interactive Threat Injection & Simulation Toolbox
+Live operator simulation toolbox allowing real-time parameter tuning, speed modulation, and controlled adversary mutators (Service Banner Mismatch, TLS Claim Contradiction, Stale Timestamp, Prompt Injection, Replay Floods, and Traffic Bursts).
+
+![Threat Injection Toolbox](screenshots/11_master_console_toolbox.png)
+
+---
+
+### Autonomous SOC Threat Copilot & Executive 30-Minute Reports
+Grounded in real-time SQLite telemetry, quarantine states, and BDI beliefs. Features one-click pre-prompts, purpose-specific LLM provider routing, and segmented filtering between scheduled 30-minute posture assessments and automated host containment plans.
+
+![SOC Copilot & Reports](screenshots/16_portal_copilot_reports_separated.png)
+
+---
+
+### Real-Time In-Browser Executive PDF Generation
+On-demand and scheduled PDF reporting with two-pass running headers, running footers (`Page X of Y`), official classification banners, and structured markdown data tables.
+
+![Real-Time PDF Modal](screenshots/15_pdf_modal_enhanced_header_footer.png)
+
+---
+
+### Live Agent Operations View
+Streamlined viewport visualizing live agent interactions, peer-to-peer message exchanges, and containment rule execution without visual clutter.
+
+![Live Agent Operations](screenshots/17_agents_page_overlap_fixed.png)
+
+---
+
+## 4. Multi-Provider LLM Intelligence Architecture
+
+SentryScan supports **purpose-specific LLM routing**, allowing operators to direct different subsystems to independent providers, models, or API keys:
+
+```ini
+# ==============================================================================
+# Purpose-Specific Provider Routing (Optional Overrides in .env)
+# ==============================================================================
+
+# 1. Executive Posture Reports (e.g. OpenAI GPT-4o or NVIDIA NIM Cloud)
+SENTRYSCAN_REPORT_LLM_PROVIDER=nvidia
+SENTRYSCAN_REPORT_LLM_MODEL=openai/gpt-oss-20b
+NVIDIA_API_KEY=nvapi-...
+
+# 2. Interactive SOC Copilot Q&A (e.g. Local Self-Hosted Ollama)
+SENTRYSCAN_COPILOT_LLM_PROVIDER=ollama
+SENTRYSCAN_COPILOT_LLM_MODEL=beam:cloud
+OLLAMA_BASE_URL=http://127.0.0.1:11434
+
+# 3. Agent Task Bidding (Deterministic fallback or lightweight models)
+SENTRYSCAN_AGENT_LLM_PROVIDER=deterministic
 ```
 
-### Core Architectural Pillars
-- **Authoritative Determinism:** All core evaluation logic—rule matching, data-integrity scoring, utility maximization, and BDI state transitions—is strictly deterministic. Identical random seeds produce byte-identical execution traces.
-- **Provider-Switchable Advisory LLM Layer:** Pluggable model providers (Local Ollama, NVIDIA NIM, OpenRouter, Google Gemini, Anthropic, OpenAI) are strictly advisory and schema-validated. An automated deterministic mock provider guarantees test pass rates without API keys.
-- **Single-Writer Event Bus:** To ensure bulletproof forensic reproducibility, all percepts, decisions, messages, and state changes pass through a single-writer event recorder that assigns monotonic, gap-free sequence numbers (`seq`).
-- **Two-Tier Defensive Gate:** Clear separation between **data integrity** (detecting corrupted or poisoned telemetry records) and **message authentication** (Ed25519 cryptographic signatures and replay caches for inter-agent communication).
-- **Ethical Simulation Boundary:** Operates exclusively on synthetic telemetry utilizing IETF documentation ranges (RFC 5737: `192.0.2.0/24`, `198.51.100.0/24`, `203.0.113.0/24`; RFC 3849: `2001:db8::/32`). SentryScan never crafts active network packets.
-
----
-
-## 3. Implementation Status & Roadmap
-
-| Version | Status | Milestone | Key Deliverables |
-|---|---|---|---|
-| **v0.1** | **Released** | Core Foundations | Monorepo baseline, CI/CD pipeline, secret scanning, reproducible packager, High-Level Design (HLD v1.2), formal PEAS & environment model |
-| **v0.2** | **Released** | Reflex Reasoner | Injectable clock & deterministic ID generator, telemetry contracts, explicit condition-action rules, JSONL trace recorder, sense-parse-decide-act loop |
-| **v0.3** | **Released** | Concurrency & Fleet | Multi-device fleet simulator, background monitor daemon, thread-safe queues, data-integrity checker, isolated ground-truth sidecar |
-| **v0.4** | **Released** | Distributed Transport | Length-prefixed binary TCP socket transport, Transport interface with in-process adapter, autonomous Analyst agent with adaptive PARAMS_UPDATE |
-| **v0.5** | **Released** | Multi-Agent Coordination | LangGraph supervisor graph, Scout and Triage roles, Contract-Net negotiation (`CFP` $\to$ `PROPOSE` $\to$ `ACCEPT`), subagent fan-out via `Send` |
-| **v0.6** | **Released** | Utility Optimization | Normalized multi-attribute utility formula, hard constraint filtering, exhaustive optimality verification, weight sensitivity analysis |
-| **v0.7** | **Released** | Deliberative BDI | Epistemic Beliefs, Desires, and committed Intentions; LangGraph Analyst workflow; autonomous intention reconsideration upon critical finding updates |
-| **v0.8** | **Released** | Context Enrichment | Vulnerability knowledge ontology, read-only NVD CVE adapter with resilient caching and offline fallback |
-| **v0.9** | **Released** | Cryptographic Security | Ed25519 message signatures, canonical RFC 8785 envelope bytes, bounded anti-replay nonce cache, security gate |
-| **v1.0** | **Released** | Capstone & UI | End-to-end supervisor graph integration, SQLite entity persistence with 100% parity guarantee, FastAPI WebSocket gateway, prebuilt HTML5 Canvas dashboard & Rich CLI terminal |
-
----
-
-## 4. Repository Layout
-
-```text
-sentryscan/
-├── .github/workflows/ci.yml       # Automated CI (linting, pytest, secret scanning)
-├── assignments/                   # Formal milestone verification & academic packages
-│   └── assignment_1_1/            # Environment & PEAS architecture specification
-├── config/                        # Runtime configurations and templates
-├── docs/                          # Architectural documentation & HLD
-│   └── hld/SentryScan_HLD_v1.2.md # Complete architectural reference
-├── fixtures/telemetry/            # Seeded deterministic test telemetry
-├── frontend/                      # Prebuilt HTML5 Canvas SPA dashboard
-├── main.py                        # One-command capstone executable runner
-├── scripts/                       # Developer automation scripts
-│   ├── export_specification_pdf.py# Headless specification PDF generator
-│   └── package_assignment.py      # Tag-based reproducible archive packager
-├── src/sentryscan/                # Production package
-│   ├── contracts/                 # Strongly typed Pydantic models
-│   ├── common/                    # Clock, ID generators, utilities
-│   ├── rules/                     # Deterministic rule table & engine
-│   ├── sensors/                   # Stream parsers & telemetry normalizers
-│   ├── actuators/                 # Finding publishers & reporting tools
-│   ├── agents/                    # Reflex and deliberative agent implementations
-│   ├── bdi/                       # Epistemic beliefs, desires, intentions & deliberator
-│   ├── negotiation/               # Contract-Net negotiation & bid scoring
-│   ├── optimizer/                 # Multi-attribute utility engine, constraint filter & weights
-│   ├── graphs/                    # LangGraph supervisor workflow & typed state
-│   ├── llm/                       # Provider-switchable advisory LLM layer
-│   ├── transport/                 # Binary framing, TCP socket client/server, in-process adapter
-│   ├── knowledge/                 # Vulnerability ontology, NVD 2.0 API adapter, cache & enricher
-│   ├── security/                  # Cryptographic Ed25519 identity, trusted registry & security gate
-│   ├── storage/                   # Relational SQLite run store & parity verifier
-│   ├── dashboard_gateway/         # Loopback FastAPI REST & WebSocket server
-│   ├── ui/                        # Rich terminal CLI dashboard
-│   ├── capstone.py                # End-to-end multi-agent orchestration pipeline
-│   └── observability/             # Event bus, JSONL & SQLite recorders
-└── tests/                         # Comprehensive unit & integration tests
-```
+* **Zero-Crash Resilience:** All LLM integrations feature automatic fallback to deterministic, rule-based responses if an external API key is missing, times out, or encounters rate limits.
+* **Dual Persistent Sinks:** Every report, message, event, and telemetry packet is written simultaneously to an indexed **SQLite Database** (`run.db`) and an authoritative, monotonic **JSONL Event Stream** (`trace.jsonl`).
 
 ---
 
@@ -136,6 +102,7 @@ sentryscan/
 
 ### Prerequisites
 - Python 3.11 or 3.12
+- Node.js 18+ (for frontend dashboard)
 - Git
 
 ### Installation
@@ -149,52 +116,97 @@ python -m venv .venv
 source .venv/bin/activate       # On Linux/macOS
 .venv\Scripts\Activate.ps1      # On Windows PowerShell
 
-# Install package and dependencies
+# Install Python package and dependencies
 pip install --upgrade pip
 pip install -r requirements.txt
 pip install -e .
+
+# Install and build frontend console
+cd frontend
+npm install
+npm run build
+cd ..
 ```
 
-### Running Tests and Linting
+---
+
+## 6. Running SentryScan
+
+### 1. Launch Continuous Live SOC Simulation (Recommended)
+Runs continuous enterprise fleet telemetry, agent deliberation, compliance scoring, and the live web console:
 ```bash
-# Run complete test suite with coverage
-pytest -v --cov=sentryscan tests/
+python main.py --live --devices 100 --profile enterprise --pace 0.5
+```
+* **Master Cyber Console:** [http://127.0.0.1:8000/master](http://127.0.0.1:8000/master)
+* **SOC Copilot & Reports:** [http://127.0.0.1:8000/#/copilot](http://127.0.0.1:8000/#/copilot)
+* **Live Agent Operations:** [http://127.0.0.1:8000/#/agents](http://127.0.0.1:8000/#/agents)
 
-# Run code style and lint checks
-ruff check .
-
-# Execute deterministic one-command Capstone demonstration
+### 2. Deterministic Capstone Demonstration
+Executes a fixed multi-cycle scenario with Rich CLI terminal graphics and verification:
+```bash
 python main.py --demo
-
-# Launch Capstone with live Web Dashboard gateway at http://127.0.0.1:8000
-python main.py --demo --serve --port 8000
 ```
 
----
-
-## 6. Milestone Packages & Case Studies
-
-For audit and evaluation purposes, each major development milestone maintains a self-contained case study package inside [`assignments/`](assignments/):
-- **Milestone 1.1:** [Agent Foundations & PEAS Taxonomy](assignments/assignment_1_1/README.md) — Comprehensive technical specification ([PDF](assignments/assignment_1_1/deliverables/SentryScan_Design_Specification.pdf)), 7-dimensional environment classification, and Unit-1 OOP vs. Agent comparative analysis.
-- **Milestone 1.2:** [Rule-Based Reflex Reasoner](assignments/assignment_1_2/README.md) — Executable Sense-Parse-Decide-Act loop, explicit condition-action rule table, malformed payload quarantine, unmatched record auditing, and monotonic `seq` JSONL event recorder.
-- **Milestone 2.1:** [Concurrency & Data Integrity](assignments/assignment_2_1/README.md) — Multi-device simulated fleet in RFC 5737 space, background monitor daemon with non-blocking heartbeat, thread-safe queue manager, lost updates race condition proof, controlled poisoning mutators with isolated ground-truth sidecar, and deterministic data-level integrity checker.
-- **Milestone 2.2:** [Socket Messaging & Autonomous Analyst](assignments/assignment_2_2/README.md) — 4-byte big-endian length-prefixed JSON binary framing, robust TCP socket client and server with reconnect/backoff, abstract `Transport` protocol with in-process adapter, and autonomous `AnalystAgent` providing adaptive scanning parameter updates in response to `ALERT` messages.
-- **Milestone 3.1:** [Multi-Agent Coordination & LangGraph](assignments/assignment_3_1/README.md) — Compiled LangGraph supervisor workflow, Scout (coverage-maximizing) and Triage (risk-prioritizing) roles, multi-turn Contract-Net negotiation (`CFP` $\to$ `PROPOSE` $\to$ `COUNTERPROPOSE` $\to$ `ACCEPT` / `REJECT` $\to$ `CONFIRM`), inline `score_bid()` seam, dynamic subagent fan-out via `Send`, bounded termination, and provider-neutral advisory LLM abstraction.
-- **Milestone 3.2:** [Utility Optimization & Feasibility Filtering](assignments/assignment_3_2/README.md) — Multi-attribute normalized utility formula, hard-constraint feasibility filtering, argmax plan selection, and exhaustive mathematical verification.
-- **Milestone 4.1:** [Deliberative BDI Modelling & Reconsideration](assignments/assignment_4_1/README.md) — BeliefBase, Desires, Intentions, and compiled LangGraph Analyst workflow with autonomous intention preemption.
-- **Milestone 4.2:** [Knowledge Representation & External API Enrichment](assignments/assignment_4_2/README.md) — Vulnerability ontology, read-only NVD CVE adapter with schema validation, persistent cache, retry/backoff, offline fallback, and intention escalation.
-
-- **Milestone 5.1:** [Cryptographic Message Authentication & Security Gate](assignments/assignment_5_1/README.md) — Ephemeral Ed25519 agent identities, trusted public key registry, canonical envelope signing with SHA-256 payload integrity, bounded fail-closed anti-replay nonce cache, and multi-stage inbound security gate protecting agent BDI deliberation against tampering, spoofing, and replays.
-- **Milestone 5.2:** [Capstone Architecture, Web Dashboard & UI Orchestration](assignments/assignment_5_2/README.md) — End-to-end supervisor graph fan-out to BDI Analyst, Ed25519-authenticated envelope exchange, SQLite and JSONL dual-sink with strict 100% event parity guarantee, loopback FastAPI REST + WebSocket gateway with sequence-based backfill, prebuilt interactive HTML5 Canvas dashboard, Rich CLI fallback, and one-command runner (main.py --demo).
-
-To package any tagged milestone into an immutable, reproducible archive:
+### 3. High-Frequency Human Workstation Test
+Simulates realistic Windows/Linux user activity (browsing, file collaboration, admin tasks):
 ```bash
-python scripts/package_assignment.py assignment-1.1
+python main.py --test-human
+```
+
+### 4. Running the Test Suite
+```bash
+pytest -v tests/
 ```
 
 ---
 
-## 7. License & Credits
+## 7. Repository Layout
+
+```text
+sentryscan/
+├── config/                        # Runtime configurations and templates
+├── docs/                          # Architectural documentation & HLD
+│   └── hld/SentryScan_HLD_v1.2.md # Complete architectural reference
+├── fixtures/                      # Deterministic test fixtures & profiles
+│   ├── knowledge/                 # Vulnerability ontology and CVE maps
+│   ├── profiles/                  # Compliance profiles (enterprise, healthcare, generic)
+│   └── telemetry/                 # Seeded synthetic telemetry
+├── frontend/                      # React + Vite Cyber Console SPA
+│   ├── src/                       # Master console, Copilot, Toolbox & Views
+│   └── dist/                      # Pre-compiled production bundle
+├── screenshots/                   # Platform captures & visual audit assets
+├── src/sentryscan/                # Production package
+│   ├── actuators/                 # Finding publishers & reporting tools
+│   ├── agents/                    # Reflex, Scout, Triage, and Remediator agents
+│   ├── analysis/                  # Executive posture report generator & PDF builder
+│   ├── bdi/                       # Epistemic beliefs, desires, intentions & deliberator
+│   ├── common/                    # Clock, ID generators, utilities
+│   ├── contracts/                 # Strongly typed Pydantic models & events
+│   ├── dashboard_gateway/         # FastAPI REST & WebSocket server
+│   ├── graphs/                    # LangGraph supervisor workflow & typed state
+│   ├── integrity/                 # Statistical and structural telemetry checkers
+│   ├── knowledge/                 # Vulnerability ontology & NVD adapter
+│   ├── live.py                    # Continuous live SOC simulation loop
+│   ├── llm/                       # Provider-switchable advisory LLM layer
+│   ├── negotiation/               # Contract-Net negotiation & bid scoring
+│   ├── observability/             # Event bus, JSONL & SQLite recorders
+│   ├── optimizer/                 # Multi-attribute utility engine & constraint filter
+│   ├── platform/                  # Core, RADAR, and Pulse compliance engines
+│   ├── rules/                     # Deterministic condition-action rule tables
+│   ├── security/                  # Cryptographic Ed25519 identity & security gate
+│   ├── sensors/                   # Stream parsers & telemetry normalizers
+│   ├── simulation/                # Synthetic fleet, human activity & threat mutators
+│   ├── storage/                   # Relational SQLite run store & parity verifier
+│   └── transport/                 # Binary framing & socket transport
+├── tests/                         # Comprehensive unit & integration tests
+├── main.py                        # Central CLI & executable runner
+├── pyproject.toml                 # Packaging & tool configurations
+└── README.md                      # Platform documentation & overview
+```
+
+---
+
+## 8. License & Credits
 
 - **Author:** R Ganesh ([@drgeekg](https://github.com/drgeekg))
 - **License:** MIT License. See [LICENSE](LICENSE) for details.

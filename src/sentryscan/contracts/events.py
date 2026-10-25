@@ -21,6 +21,7 @@ class EventType(str, Enum):
     MESSAGE_SENT = "message_sent"
     MESSAGE_RECEIVED = "message_received"
     STATE_TRANSITION = "state_transition"
+    PARAMS_UPDATE = "params_update"
     RUN_COMPLETED = "run_completed"
 
 

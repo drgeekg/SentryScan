@@ -173,3 +173,54 @@ def test_gateway_serves_html() -> None:
     assert res.status_code == 200
     assert "text/html" in res.headers["content-type"]
     assert "SentryScan" in res.text
+
+def test_gateway_quarantine_endpoints_and_console_flow() -> None:
+    store, run_id = _seed_test_store()
+    app = create_app(store=store)
+    client = TestClient(app)
+    store.save_pending_quarantine(
+        quarantine_id='pq-gw-01',
+        run_id=run_id,
+        host_id='sim-host-01',
+        finding_id='fnd-gw-01',
+        rule_id='RULE-01-PORT',
+        confidence=0.85,
+        remote_exploitable=True,
+        status='PENDING',
+        created_at='2026-10-21T10:00:05Z',
+    )
+    res_list = client.get(f'/api/runs/{run_id}/quarantines')
+    assert res_list.status_code == 200
+    assert res_list.json()[0]['quarantine_id'] == 'pq-gw-01'
+
+    res_decide = client.post(
+        f'/api/runs/{run_id}/quarantines/pq-gw-01/decide',
+        json={'decision': 'APPROVED', 'decided_by': 'console-operator'},
+    )
+    assert res_decide.status_code == 200
+    assert res_decide.json()['status'] == 'APPROVED'
+
+    res_f = client.get(f'/api/runs/{run_id}/findings')
+    assert res_f.json()[0]['quarantined'] is True
+
+    res_rep = client.get(f'/api/runs/{run_id}/reports')
+    assert len(res_rep.json()) >= 1
+    assert any('Remediation Plan' in r['window_name'] for r in res_rep.json())
+
+    store.save_pending_quarantine(
+        quarantine_id='pq-gw-02',
+        run_id=run_id,
+        host_id='sim-host-02',
+        finding_id='fnd-gw-02',
+        rule_id='RULE-004',
+        confidence=0.80,
+        remote_exploitable=False,
+        status='PENDING',
+        created_at='2026-10-21T10:00:06Z',
+    )
+    res_rej = client.post(
+        f'/api/runs/{run_id}/quarantines/pq-gw-02/decide',
+        json={'decision': 'REJECTED', 'decided_by': 'console-operator'},
+    )
+    assert res_rej.status_code == 200
+    assert res_rej.json()['status'] == 'REJECTED'

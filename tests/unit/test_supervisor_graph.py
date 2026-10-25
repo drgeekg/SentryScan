@@ -185,3 +185,81 @@ def test_supervisor_graph_with_analyst_and_security_gate():
     # Host sim-host-002 with Apache 2.4.49 should be quarantined
     assert "sim-host-002" in final_state["quarantined_hosts"]
     assert final_state["metadata"]["quarantined_count"] > 0
+
+
+def test_supervisor_graph_with_soc_tiers_l1_l2_l3():
+    from sentryscan.agents.analyst import AnalystAgent
+    from sentryscan.knowledge.enricher import KnowledgeEnricher
+    from sentryscan.knowledge.ontology import VulnerabilityKnowledgeBase
+    from sentryscan.security.gate import SecurityGate
+    from sentryscan.security.identity import AgentIdentity
+    from sentryscan.security.registry import TrustedAgentRegistry
+
+    clock = FakeClock("2026-10-21T07:00:00Z")
+    id_gen = IdGenerator(seed=202)
+    llm = DeterministicLLMProvider()
+
+    agent_names = (
+        "supervisor-agent",
+        "analyst-l1-triage",
+        "analyst-l2-incident",
+        "analyst-l3-containment",
+    )
+    ids = {n: AgentIdentity.generate(n) for n in agent_names}
+    registry = TrustedAgentRegistry()
+    for i in ids.values():
+        registry.register(i.agent_id, i.public_key_hex, description=i.agent_id)
+
+    ontology = VulnerabilityKnowledgeBase.load_from_file()
+    analyst_tiers = {
+        tier: AnalystAgent(
+            agent_id=aid,
+            tier=tier,
+            clock=clock,
+            id_gen=id_gen,
+            enricher=KnowledgeEnricher(ontology=ontology, enable_online_nvd=False),
+            security_gate=SecurityGate(
+                agent_id=aid, registry=registry, clock=clock, freshness_window_seconds=30.0
+            ),
+        )
+        for tier, aid in (
+            ("L1", "analyst-l1-triage"),
+            ("L2", "analyst-l2-incident"),
+            ("L3", "analyst-l3-containment"),
+        )
+    }
+
+    app = build_supervisor_graph(
+        clock=clock,
+        id_gen=id_gen,
+        llm_provider=llm,
+        analyst_tiers=analyst_tiers,
+        analyst_identities=ids,
+        supervisor_identity=ids["supervisor-agent"],
+        max_rounds=3,
+    )
+
+    initial_state = {
+        "run_id": "run-test-soc-tiers",
+        "task_id": "task-soc-tiers",
+        "batches": _build_test_batches(),
+        "constraints": {"max_cost": 100.0, "max_time": 500.0},
+        "messages": [],
+        "findings": [],
+        "analyst_replies": [],
+        "quarantined_hosts": [],
+        "errors": [],
+    }
+
+    final_state = app.invoke(initial_state)
+
+    assert final_state["phase"] == "COMPLETED"
+    assert len(final_state["quarantined_hosts"]) > 0
+
+    # Verify full escalation chain in messages:
+    # supervisor-agent -> analyst-l1-triage -> analyst-l2-incident -> analyst-l3-containment -> supervisor-agent
+    pairs = {(m.sender, m.receiver, m.performative) for m in final_state["messages"]}
+    assert ("supervisor-agent", "analyst-l1-triage", Performative.ALERT) in pairs
+    assert ("analyst-l1-triage", "analyst-l2-incident", Performative.ALERT) in pairs
+    assert ("analyst-l2-incident", "analyst-l3-containment", Performative.ALERT) in pairs
+    assert ("analyst-l3-containment", "supervisor-agent", Performative.PARAMS_UPDATE) in pairs

@@ -1,0 +1,43 @@
+{
+  "profile": "generic",
+  "name": "Generic Enterprise (industry-agnostic)",
+  "evidence_freshness_seconds": 3600,
+  "classifications": [
+    {"id": "PII", "name": "Personal information", "severity": "HIGH",
+     "patterns": ["[\\w.+-]+@[\\w-]+\\.[\\w.]+", "\\b\\d{3}-\\d{2}-\\d{4}\\b"],
+     "samples": ["contact alice.martin@example.org", "national id 123-45-6789"]},
+    {"id": "HEALTH", "name": "Health information", "severity": "HIGH",
+     "patterns": ["(?i)\\b(diagnosis|prescription|patient id)\\b"],
+     "samples": ["patient id P-48213 diagnosis: asthma", "prescription renewal for patient id P-1177"]},
+    {"id": "FINANCIAL", "name": "Financial information", "severity": "HIGH",
+     "patterns": ["\\b(?:\\d{4}[ -]?){3}\\d{4}\\b", "\\b[A-Z]{2}\\d{2}[A-Z0-9]{10,30}\\b"],
+     "samples": ["card 4111 1111 1111 1111", "iban GB82WEST12345698765432"]},
+    {"id": "IP", "name": "Intellectual property", "severity": "MEDIUM",
+     "patterns": ["(?i)\\b(confidential|proprietary|trade secret)\\b"],
+     "samples": ["CONFIDENTIAL roadmap draft", "proprietary algorithm notes"]},
+    {"id": "CREDENTIALS", "name": "Credentials and secrets", "severity": "CRITICAL",
+     "patterns": ["(?i)(password|api[_-]?key|secret)\\s*[=:]\\s*\\S+", "AKIA[0-9A-Z]{16}"],
+     "samples": ["db_password=Sup3rS3cret!", "api_key: AKIAABCDEFGHIJKLMNOP"]},
+    {"id": "CUSTOM", "name": "Organisation-defined (example)", "severity": "MEDIUM",
+     "patterns": ["\\bPROJECT-[A-Z]{3,}\\b"],
+     "samples": ["see PROJECT-ORION budget"]}
+  ],
+  "controls": [
+    {"id": "CTL-01", "name": "No cleartext management protocols", "category": "Network", "check": {"type": "rules", "rules": ["RULE-001", "RULE-006"]}, "description": "Telnet and cleartext HTTP admin consoles must not be exposed."},
+    {"id": "CTL-02", "name": "Current transport encryption", "category": "Cryptography", "check": {"type": "rules", "rules": ["RULE-003"]}, "description": "Services must not negotiate SSLv3 or TLS 1.0/1.1."},
+    {"id": "CTL-03", "name": "No default credentials", "category": "Identity", "check": {"type": "rules", "rules": ["RULE-004"]}, "description": "Factory or well-known credentials must be removed."},
+    {"id": "CTL-04", "name": "No known-vulnerable service versions", "category": "Vulnerability", "check": {"type": "rules", "rules": ["RULE-005"]}, "description": "Banners must not match known critical exploits."},
+    {"id": "CTL-05", "name": "No anonymous service access", "category": "Identity", "check": {"type": "rules", "rules": ["RULE-002"]}, "description": "Anonymous FTP and similar access is not permitted."},
+    {"id": "CTL-06", "name": "Sensitive data not publicly exposed", "category": "Data protection", "check": {"type": "radar_exposure"}, "description": "Classified data must not live in publicly reachable stores."},
+    {"id": "CTL-07", "name": "Sensitive data encrypted at rest", "category": "Data protection", "check": {"type": "radar_unencrypted"}, "description": "High-sensitivity classifications must be stored encrypted."},
+    {"id": "CTL-08", "name": "Telemetry integrity maintained", "category": "Monitoring", "check": {"type": "integrity", "max_reject_ratio": 0.5}, "description": "Share of telemetry rejected as implausible must stay below the threshold."}
+  ],
+  "frameworks": [
+    {"id": "baseline", "name": "Baseline-8 (generic)", "illustrative": false,
+     "mappings": {"CTL-01": "B1", "CTL-02": "B2", "CTL-03": "B3", "CTL-04": "B4", "CTL-05": "B5", "CTL-06": "B6", "CTL-07": "B7", "CTL-08": "B8"}},
+    {"id": "iso27001", "name": "ISO/IEC 27001 (illustrative mapping)", "illustrative": true,
+     "mappings": {"CTL-01": "A.8.20", "CTL-02": "A.8.24", "CTL-03": "A.5.17", "CTL-04": "A.8.8", "CTL-05": "A.5.15", "CTL-06": "A.8.3", "CTL-07": "A.8.24", "CTL-08": "A.8.15"}},
+    {"id": "nistcsf", "name": "NIST CSF 2.0 (illustrative mapping)", "illustrative": true,
+     "mappings": {"CTL-01": "PR.IR", "CTL-02": "PR.DS", "CTL-03": "PR.AA", "CTL-04": "ID.RA", "CTL-05": "PR.AA", "CTL-06": "PR.DS", "CTL-07": "PR.DS", "CTL-08": "DE.CM"}}
+  ]
+}

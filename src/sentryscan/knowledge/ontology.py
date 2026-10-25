@@ -70,9 +70,16 @@ class VulnerabilityKnowledgeBase:
         for svc_key, records in self._records_by_service.items():
             if svc_key in svc_norm or (banner_norm and svc_key in banner_norm):
                 for rec in records:
-                    if rec.cve_id not in seen_cves:
-                        results.append(rec)
-                        seen_cves.add(rec.cve_id)
+                    if rec.cve_id in seen_cves:
+                        continue
+                    # When a banner is present and the record specifies affected_versions (excluding wildcard '*'),
+                    # require that at least one affected version or specific product token appears in the banner.
+                    version_restricted = [v for v in rec.affected_versions if v != '*']
+                    if banner_norm and version_restricted:
+                        if not any(v.lower() in banner_norm for v in version_restricted):
+                            continue
+                    results.append(rec)
+                    seen_cves.add(rec.cve_id)
 
         # Sort matches by highest CVSS score descending
         results.sort(key=lambda r: r.cvss_score, reverse=True)

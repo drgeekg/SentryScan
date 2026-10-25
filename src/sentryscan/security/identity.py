@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+from typing import Any
+
 from cryptography.hazmat.primitives.asymmetric.ed25519 import (
     Ed25519PrivateKey,
     Ed25519PublicKey,
@@ -64,6 +66,12 @@ class AgentIdentity:
     def sign_hex(self, data: bytes) -> str:
         """Sign binary data with Ed25519 private key, returning 128-character hex string."""
         return self.sign_bytes(data).hex()
+
+    def sign_message(self, message: Any) -> Any:
+        """Sign a Message envelope with this identity's Ed25519 private key."""
+        from sentryscan.security.canonical import sign_envelope
+
+        return sign_envelope(message, self)
 
     def __repr__(self) -> str:
         """Safe representation suppressing private key bytes."""
