@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import io
 import json
+import logging
 import re
 import time
 import uuid
@@ -14,6 +15,8 @@ from sentryscan.common.clock import SystemClock
 from sentryscan.llm.factory import get_llm_provider
 from sentryscan.llm.interface import LLMProvider, LLMRequest
 from sentryscan.storage.store import SQLiteRunStore
+
+logger = logging.getLogger(__name__)
 
 
 def correlate_incidents(findings: list[dict[str, Any]], quarantined_hosts: set[str]) -> list[dict[str, Any]]:
@@ -92,7 +95,6 @@ def generate_posture_report(
     crit_count = sum(1 for f in findings if str(f.get("severity")).upper() == "CRITICAL")
     high_count = sum(1 for f in findings if str(f.get("severity")).upper() == "HIGH")
     med_count = sum(1 for f in findings if str(f.get("severity")).upper() == "MEDIUM")
-    low_count = sum(1 for f in findings if str(f.get("severity")).upper() == "LOW")
 
     penalty = (crit_count * 15) + (high_count * 7) + (med_count * 2) + (len(quarantined) * 5)
     score = max(10, min(100, 100 - penalty))
@@ -336,8 +338,8 @@ def _build_minimal_pdf(report: dict[str, Any]) -> bytes:
     ]
 
     y = 675
-    for l in lines[4:40]:
-        escaped = l.replace("\\", "\\\\").replace("(", "\\(").replace(")", "\\)")
+    for line_item in lines[4:40]:
+        escaped = line_item.replace("\\", "\\\\").replace("(", "\\(").replace(")", "\\)")
         content_stream.append(f"BT /F1 8.5 Tf 50 {y} Td ({escaped}) Tj ET")
         y -= 14
         if y < 50:

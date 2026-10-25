@@ -1,0 +1,14 @@
+[allowlist]
+description = "Global allowlist for synthetic test fixtures and regexes"
+paths = [
+  '''fixtures/''',
+  '''tests/''',
+  '''assignments/''',
+  '''docs/''',
+  '''frontend/dist/'''
+]
+regexes = [
+  '''AKIA[0-9A-Z]{16}''',
+  '''Sup3rS3cret!''',
+  '''nvapi-[a-zA-Z0-9_\-]+''',
+]

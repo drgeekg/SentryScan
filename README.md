@@ -3,68 +3,103 @@
 [![CI Pipeline](https://github.com/drgeekg/SentryScan/actions/workflows/ci.yml/badge.svg)](https://github.com/drgeekg/SentryScan/actions/workflows/ci.yml)
 [![Python Version](https://img.shields.io/badge/python-3.11%20%7C%203.12-blue.svg)](https://www.python.org/)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
-[![Architecture Status](https://img.shields.io/badge/architecture-v2.0-purple.svg)](docs/hld/SentryScan_HLD_v1.2.md)
-[![Determinism](https://img.shields.io/badge/audit-deterministic-success.svg)](#determinism-contract)
+[![Platform Version](https://img.shields.io/badge/platform-v2.0-purple.svg)](docs/hld/SentryScan_HLD_v1.2.md)
+[![Architecture Status](https://img.shields.io/badge/architecture-dual--product-success.svg)](#1-the-two-integrated-products)
 
 **Autonomous Agentic Security Telemetry Analysis & Cyber Risk Intelligence Platform**  
-*Continuous Multi-Agent Coordination, Data Discovery, Compliance Posture, and Grounded Threat Copilot.*
+*Dual-Product Suite: Executive Compliance & Risk Portal + Deep Tactical Multi-Agent SOC Console.*
 
 ---
 
-## 1. Overview & Purpose
+## 1. The Two Integrated Products
 
-Modern enterprise networks generate vast amounts of operational security telemetry—service banners, TLS configurations, listening ports, device announcements, and sensitive data access patterns. Security Operations Centers (SOCs) face two critical hurdles:
-1. **Severe Alert Fatigue:** High volumes of uncorrelated, noisy alerts obscure critical vulnerabilities.
-2. **Operational Fragility of Active Probing:** Intrusive port scanning, packet fuzzing, and live exploit checks can disrupt fragile production services, trigger network locks, or violate compliance policies.
+SentryScan has evolved into a **dual-product enterprise cyber security suite**, addressing both high-level executive compliance & risk posture and deep tactical multi-agent SOC investigation:
 
-**SentryScan** solves this by providing a **non-intrusive, autonomous agentic platform** for continuous security posture evaluation. Instead of probing live network targets, SentryScan continuously ingests, normalizes, and analyzes streaming endpoint telemetry. It identifies authentic vulnerabilities through deterministic rule tables, detects telemetry tampering via statistical and structural integrity checks, and orchestrates an autonomous agent collective to prioritize, contain, and remediate high-risk threats.
-
----
-
-## 2. Platform Architecture: The Three Core Pillars
-
-SentryScan organizes autonomous defense into three synchronized, enterprise-grade modules:
-
-| Module | Codename | Primary Mission | Key Capabilities |
-| :--- | :--- | :--- | :--- |
-| **Agentic SOC** | **VIGIL** | Autonomous threat detection, triage & rapid containment | • LangGraph Multi-Agent Supervisor (`ScoutAgent`, `TriageAgent`, `RemediatorAgent`)<br>• Contract-Net negotiation & bid optimization<br>• Multi-stage BDI deliberation (Beliefs, Desires, Intentions)<br>• Automated dry-run iptables / nftables host containment playbooks |
-| **Data Discovery** | **SENTRA** | Sensitive data asset discovery & exposure classification | • Real-time detection across PII, Financial, Health/PHI, Credentials & IP<br>• Public vs. Private source exposure classification<br>• Asset criticality scoring & sensitive data mapping |
-| **Compliance & Posture** | **POLARIS** | Continuous automated compliance & governance controls | • Continuous controls evaluation across Baseline, ISO 27001, and NIST CSF<br>• Dynamic profile inheritance (`enterprise`, `healthcare`, `soc_heavy`, `generic`)<br>• Evidence freshness monitoring & audit-ready traceability |
-
----
-
-## 3. Platform Visual Interface & Capabilities
-
-### Master Cyber Console & Multi-Agent Network Topology
-Interactive visual command center rendering real-time BDI state transitions, Contract-Net negotiation bids, live agent network topology, and event timelines.
-
-![Master Cyber Console](screenshots/10_master_console_active_pipeline.png)
+```text
+                               +---------------------------------------------+
+                               |                 SentryScan                  |
+                               |    Autonomous Cyber Security Platform v2.0  |
+                               +---------------------------------------------+
+                                      /                               \
+                                     /                                 \
+        +-------------------------------------------+   +-------------------------------------------+
+        |                 PRODUCT 1                 |   |                 PRODUCT 2                 |
+        |       Executive Cyber & Compliance        |   |            Master Cyber Console           |
+        |               PORTAL (/)                  |   |                 (/master)                 |
+        +-------------------------------------------+   +-------------------------------------------+
+        | • POLARIS: Continuous Compliance Controls |   | • VIGIL: LangGraph Multi-Agent SOC        |
+        | • SENTRA: Sensitive Data Discovery        |   | • Live Interactive Agent Topology Graph   |
+        | • AI SOC Threat Copilot with Pre-Prompts  |   | • Contract-Net Bidding & Negotiation View |
+        | • 30-Min Executive Posture Assessments    |   | • Multi-Stage BDI Deliberation Inspector  |
+        | • In-Browser Real-Time Executive PDFs     |   | • Live Simulation & Threat Injection Box  |
+        | • Enterprise Asset Inventory (11 Classes) |   | • Dry-Run Containment Playbooks (L1/L2/L3)|
+        +-------------------------------------------+   +-------------------------------------------+
+```
 
 ---
 
-### Interactive Threat Injection & Simulation Toolbox
-Live operator simulation toolbox allowing real-time parameter tuning, speed modulation, and controlled adversary mutators (Service Banner Mismatch, TLS Claim Contradiction, Stale Timestamp, Prompt Injection, Replay Floods, and Traffic Bursts).
+### Product Comparison Matrix
 
-![Threat Injection Toolbox](screenshots/11_master_console_toolbox.png)
+| Capability / Dimension | Product 1: Executive Cyber & Compliance Portal (`/`) | Product 2: Master Cyber Console (`/master`) |
+| :--- | :--- | :--- |
+| **Primary Audience** | CISOs, Risk Officers, Compliance Auditors, SecOps Leadership | SOC Analysts, Incident Responders, Threat Hunters, Agent Researchers |
+| **Access Route** | `http://127.0.0.1:8000/` or `/#/overview`, `/#/copilot` | `http://127.0.0.1:8000/master` or `/#/agents` |
+| **Primary Engines** | **POLARIS** (Compliance) + **SENTRA** (Data Discovery) | **VIGIL** (Agentic SOC Multi-Agent Collective) |
+| **Intelligence Interface** | Interactive SOC Threat Copilot + 30-Min Posture Reports | BDI Beliefs/Desires/Intentions Inspector + Contract-Net Stream |
+| **Reporting & Export** | Real-Time In-Browser PDF Generator (Header, Footer, Tables) | Dry-Run Host Containment Playbooks (iptables & nftables) |
+| **Controls & Simulation** | Framework Switcher (ISO 27001, NIST CSF), Remediation Tasks | Live Mutator Injector (Banner Mismatch, TLS Breach, Replays) |
+| **Fleet Visibility** | 11 Typed Enterprise Asset Classes with Public/Private Exposure | Dynamic Graph Topology with Animated Inter-Agent Pulse Lines |
 
 ---
 
-### Autonomous SOC Threat Copilot & Executive 30-Minute Reports
-Grounded in real-time SQLite telemetry, quarantine states, and BDI beliefs. Features one-click pre-prompts, purpose-specific LLM provider routing, and segmented filtering between scheduled 30-minute posture assessments and automated host containment plans.
+## 2. Product 1: Executive Cyber & Compliance Portal (`/`)
+
+The Executive Portal provides unified organizational risk visibility, automated compliance auditing, sensitive data exposure mapping, and AI-assisted investigation.
+
+### 2.1 Autonomous SOC Threat Copilot & 30-Minute Posture Reports
+Grounded in real-time SQLite telemetry, quarantine records, and BDI beliefs. Features one-click pre-prompt investigation chips, purpose-specific LLM provider routing, and segmented filtering between scheduled 30-minute posture assessments and automated host containment plans.
 
 ![SOC Copilot & Reports](screenshots/16_portal_copilot_reports_separated.png)
 
----
+### 2.2 POLARIS · Continuous Compliance & Governance
+Automated control evaluation continuously fed by telemetry integrity checks and data discovery signals. Supports dynamic framework mapping across **Baseline-8**, **ISO/IEC 27001**, and **NIST CSF 2.0**, with customizable profile inheritance (`enterprise`, `healthcare`, `soc_heavy`, `generic`).
 
-### Real-Time In-Browser Executive PDF Generation
-On-demand and scheduled PDF reporting with two-pass running headers, running footers (`Page X of Y`), official classification banners, and structured markdown data tables.
+### 2.3 SENTRA · Sensitive Data Asset Discovery (RADAR)
+Classifies sensitive enterprise data patterns across 6 categories: **PII**, **Health / PHI**, **Financial**, **Intellectual Property**, **Credentials & Secrets**, and **Custom Organizational Identifiers**. Tracks public versus private exposure status with unencrypted storage warnings.
+
+### 2.4 Real-Time Executive PDF Generation
+On-demand and scheduled PDF reporting featuring a two-pass `NumberedCanvas` with running headers (`SENTRYSCAN // AUTONOMOUS CYBER SOC PLATFORM`), running footers (`AUTONOMOUS AGENTIC CYBER PLATFORM · VIGIL · SENTRA · POLARIS · Page X of Y`), official classification banners, and formatted markdown tables.
 
 ![Real-Time PDF Modal](screenshots/15_pdf_modal_enhanced_header_footer.png)
 
 ---
 
-### Live Agent Operations View
-Streamlined viewport visualizing live agent interactions, peer-to-peer message exchanges, and containment rule execution without visual clutter.
+## 3. Product 2: Master Cyber Console (`/master`)
+
+The Master Cyber Console is a high-density, real-time command cockpit designed for deep technical investigation, agent introspection, and controlled adversarial testing.
+
+### 3.1 VIGIL · Agentic SOC Collective & Live Topology Graph
+An interactive SVG visualization mapping the live multi-agent hierarchy:
+* `fleet_sensor` $\to$ `scanner_worker` $\to$ `supervisor-agent`
+* Contract-Net negotiation fan-out between `scout-agent` (coverage maximization) and `analyst-l1-triage` (risk prioritization)
+* 3-tier BDI Analyst escalation: L1 Triage $\to$ L2 Incident $\to$ L3 Containment
+* `remediator-agent`: Generates verified dry-run containment rules (`iptables` and `nftables`) upon quarantine approval.
+
+![Master Cyber Console](screenshots/10_master_console_active_pipeline.png)
+
+### 3.2 Interactive Threat Injection & Simulation Toolbox
+Allows security operators to inject synthetic adversary attacks and telemetry corruptions into the running fleet in real time:
+* **Service Banner Mismatch**: Injects conflicting software banners to test reflex detection.
+* **TLS Claim Contradiction**: Simulates cleartext ports falsely reporting SSL encryption.
+* **Stale Timestamp & Clock Skew**: Tests time-drift detection and replay defense gates.
+* **Prompt Injection Banner**: Adversarial text designed to test LLM copilot jailbreak resilience.
+* **Replay Floods & Traffic Bursts**: High-frequency telemetry bursts to stress agent negotiation.
+* **Simulation Speed & Fleet Pace**: Adjustable live pace slider and profile switching.
+
+![Threat Injection Toolbox](screenshots/11_master_console_toolbox.png)
+
+### 3.3 Streamlined Agent Operations View
+Cleaned viewport eliminating redundant headers and button overlaps, providing zero-distraction monitoring of live agent message exchanges, BDI beliefs, and quarantine triggers.
 
 ![Live Agent Operations](screenshots/17_agents_page_overlap_fixed.png)
 
@@ -76,10 +111,10 @@ SentryScan supports **purpose-specific LLM routing**, allowing operators to dire
 
 ```ini
 # ==============================================================================
-# Purpose-Specific Provider Routing (Optional Overrides in .env)
+# Purpose-Specific Provider Routing (Configured in .env)
 # ==============================================================================
 
-# 1. Executive Posture Reports (e.g. OpenAI GPT-4o or NVIDIA NIM Cloud)
+# 1. Executive Posture Reports (e.g. NVIDIA Cloud, OpenAI GPT-4o, Claude)
 SENTRYSCAN_REPORT_LLM_PROVIDER=nvidia
 SENTRYSCAN_REPORT_LLM_MODEL=openai/gpt-oss-20b
 NVIDIA_API_KEY=nvapi-...
@@ -89,7 +124,7 @@ SENTRYSCAN_COPILOT_LLM_PROVIDER=ollama
 SENTRYSCAN_COPILOT_LLM_MODEL=beam:cloud
 OLLAMA_BASE_URL=http://127.0.0.1:11434
 
-# 3. Agent Task Bidding (Deterministic fallback or lightweight models)
+# 3. Agent Task Bidding (Deterministic rule-based or lightweight models)
 SENTRYSCAN_AGENT_LLM_PROVIDER=deterministic
 ```
 
@@ -102,7 +137,7 @@ SENTRYSCAN_AGENT_LLM_PROVIDER=deterministic
 
 ### Prerequisites
 - Python 3.11 or 3.12
-- Node.js 18+ (for frontend dashboard)
+- Node.js 18+ (for frontend console build)
 - Git
 
 ### Installation
@@ -116,12 +151,12 @@ python -m venv .venv
 source .venv/bin/activate       # On Linux/macOS
 .venv\Scripts\Activate.ps1      # On Windows PowerShell
 
-# Install Python package and dependencies
+# Install Python package and core dependencies
 pip install --upgrade pip
 pip install -r requirements.txt
 pip install -e .
 
-# Install and build frontend console
+# Compile Frontend Dashboard (Pre-built bundle included in dist/)
 cd frontend
 npm install
 npm run build
@@ -130,25 +165,28 @@ cd ..
 
 ---
 
-## 6. Running SentryScan
+## 6. Launching SentryScan
 
-### 1. Launch Continuous Live SOC Simulation (Recommended)
-Runs continuous enterprise fleet telemetry, agent deliberation, compliance scoring, and the live web console:
+### 1. Launch Continuous Live SOC (Both Products Active)
+Runs continuous enterprise fleet telemetry (100+ devices), multi-agent deliberation, compliance scoring, and both web interfaces on port 8000:
 ```bash
 python main.py --live --devices 100 --profile enterprise --pace 0.5
 ```
-* **Master Cyber Console:** [http://127.0.0.1:8000/master](http://127.0.0.1:8000/master)
-* **SOC Copilot & Reports:** [http://127.0.0.1:8000/#/copilot](http://127.0.0.1:8000/#/copilot)
-* **Live Agent Operations:** [http://127.0.0.1:8000/#/agents](http://127.0.0.1:8000/#/agents)
+* **Product 1 (Executive & Compliance Portal):** [http://127.0.0.1:8000/](http://127.0.0.1:8000/)  
+  * SOC Threat Copilot & Reports: [http://127.0.0.1:8000/#/copilot](http://127.0.0.1:8000/#/copilot)
+  * VIGIL Agentic SOC: [http://127.0.0.1:8000/#/vigil](http://127.0.0.1:8000/#/vigil)
+  * SENTRA Data Discovery: [http://127.0.0.1:8000/#/sentra](http://127.0.0.1:8000/#/sentra)
+  * POLARIS Compliance: [http://127.0.0.1:8000/#/polaris](http://127.0.0.1:8000/#/polaris)
+* **Product 2 (Master Cyber Console):** [http://127.0.0.1:8000/master](http://127.0.0.1:8000/master)
 
 ### 2. Deterministic Capstone Demonstration
-Executes a fixed multi-cycle scenario with Rich CLI terminal graphics and verification:
+Executes a fixed multi-cycle scenario with Rich CLI terminal graphics and dual-sink parity verification:
 ```bash
 python main.py --demo
 ```
 
 ### 3. High-Frequency Human Workstation Test
-Simulates realistic Windows/Linux user activity (browsing, file collaboration, admin tasks):
+Simulates realistic Windows and Linux user workstation traffic (browsing, file collaboration, administrative bursts):
 ```bash
 python main.py --test-human
 ```

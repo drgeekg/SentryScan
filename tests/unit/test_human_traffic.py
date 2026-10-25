@@ -49,7 +49,7 @@ def test_human_traffic_generator_burst_planning():
     records = gen.generate_burst_records(burst)
     assert len(records) == burst.record_count
 
-    for rec, truth, is_p, inj_type in records:
+    for rec, truth, _is_p, _inj_type in records:
         assert rec.host_id == burst.host_id
         assert truth["host_id"] == burst.host_id
         assert "persona" in truth
@@ -75,7 +75,7 @@ def test_human_traffic_generator_determinism():
     recs2 = gen2.generate_burst_records(b2)
 
     assert len(recs1) == len(recs2)
-    for (r1, t1, p1, _), (r2, t2, p2, _) in zip(recs1, recs2):
+    for (r1, _t1, p1, _), (r2, _t2, p2, _) in zip(recs1, recs2, strict=True):
         assert r1.record_id == r2.record_id
         assert r1.host_id == r2.host_id
         assert r1.port == r2.port

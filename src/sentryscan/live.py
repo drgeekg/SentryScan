@@ -268,7 +268,7 @@ def run_live(
                                 details={"burst": burst["kind"], "size": burst["size"],
                                          "poison_rate": round(burst["poison"], 2),
                                          "target": burst["target"].host_id if burst["target"] else None})
-                act_w = [w for d, w in zip(fleet.devices, weights) if d in active] or None
+                act_w = [w for d, w in zip(fleet.devices, weights, strict=False) if d in active] or None
                 for _ in range(burst["size"]):
                     if burst["target"] is not None and shape.random() < 0.7:
                         dev = burst["target"]

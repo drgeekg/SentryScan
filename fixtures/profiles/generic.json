@@ -17,7 +17,7 @@
      "samples": ["CONFIDENTIAL roadmap draft", "proprietary algorithm notes"]},
     {"id": "CREDENTIALS", "name": "Credentials and secrets", "severity": "CRITICAL",
      "patterns": ["(?i)(password|api[_-]?key|secret)\\s*[=:]\\s*\\S+", "AKIA[0-9A-Z]{16}"],
-     "samples": ["db_password=Sup3rS3cret!", "api_key: AKIAABCDEFGHIJKLMNOP"]},
+     "samples": ["db_password=EXAMPLE_TOKEN", "api_key: EXAMPLE_ACCESS_KEY"]},
     {"id": "CUSTOM", "name": "Organisation-defined (example)", "severity": "MEDIUM",
      "patterns": ["\\bPROJECT-[A-Z]{3,}\\b"],
      "samples": ["see PROJECT-ORION budget"]}

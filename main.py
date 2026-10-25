@@ -23,10 +23,10 @@ load_dotenv()
 # Ensure src is in Python path for direct execution
 sys.path.insert(0, str(Path(__file__).resolve().parent / "src"))
 
-from sentryscan.capstone import run_capstone, run_eval
-from sentryscan.dashboard_gateway.server import create_app
-from sentryscan.simulation.human_tester import run_human_workstation_test
-from sentryscan.storage.store import SQLiteRunStore
+from sentryscan.capstone import run_capstone, run_eval  # noqa: E402
+from sentryscan.dashboard_gateway.server import create_app  # noqa: E402
+from sentryscan.simulation.human_tester import run_human_workstation_test  # noqa: E402
+from sentryscan.storage.store import SQLiteRunStore  # noqa: E402
 
 
 def main() -> None:
