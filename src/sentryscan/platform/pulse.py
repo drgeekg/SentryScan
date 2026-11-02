@@ -32,6 +32,13 @@ def _distinct(findings: list[dict[str, Any]]) -> list[dict[str, Any]]:
     return list(seen.values())
 
 
+def _open(store: Any, run_id: str) -> list[dict[str, Any]]:
+    """Distinct (host, rule) findings that have not been resolved by remediation."""
+    core.ensure_tables(store)
+    done = {r["finding_id"] for r in q(store, "SELECT finding_id FROM resolutions WHERE run_id=?", (run_id,))}
+    return _distinct([f for f in store.get_findings(run_id) if f["finding_id"] not in done])
+
+
 def evaluate_controls(store: Any, run_id: str, record_history: bool = True) -> list[dict[str, Any]]:
     core.ensure_bootstrapped(store, run_id)
     prof = active_profile(store, run_id)
@@ -39,10 +46,11 @@ def evaluate_controls(store: Any, run_id: str, record_history: bool = True) -> l
     fw = next((f for f in prof["frameworks"] if f["id"] == fw_id), prof["frameworks"][0])
     window = int(prof.get("evidence_freshness_seconds", 3600))
     ref = _ref_time(store, run_id)
-    findings = _distinct(store.get_findings(run_id))
+    findings = _open(store, run_id)
     telem = q(store, "SELECT COUNT(*) AS n, MAX(generated_at) AS t FROM telemetry_records WHERE run_id=?", (run_id,))[0]
+    base = int(get_setting(store, run_id, "integrity_baseline_seq", "0"))
     ev = q(store, "SELECT SUM(event_type='record_received') AS rx, SUM(event_type='record_rejected') AS rj, "
-                  "MAX(timestamp_utc) AS t FROM events WHERE run_id=?", (run_id,))[0]
+                  "MAX(timestamp_utc) AS t FROM events WHERE run_id=? AND seq>?", (run_id, base))[0]
     dfs = q(store, "SELECT * FROM data_findings WHERE run_id=?", (run_id,))
     sources = q(store, "SELECT * FROM data_sources WHERE run_id=?", (run_id,))
     scans = q(store, "SELECT * FROM radar_scans WHERE run_id=? ORDER BY started_at DESC", (run_id,))
@@ -96,6 +104,11 @@ def evaluate_controls(store: Any, run_id: str, record_history: bool = True) -> l
                 reason = "No violations in latest scan." if status == "PASS" else "Last scan is stale: rescan."
         elif chk["type"] == "integrity":
             rx, rj = ev["rx"] or 0, ev["rj"] or 0
+            if not rx and base:
+                reason = "Integrity baseline reset by operator; no rejected telemetry since."
+                evid = [{"source": "VIGIL", "kind": "integrity", "ref": "integrity_checker", "host_id": None,
+                         "timestamp": core.now_iso(), "fresh": True, "summary": reason}]
+                status = "PASS"
             if rx:
                 ratio = rj / rx
                 status = "PASS" if ratio <= chk.get("max_reject_ratio", 0.5) else "FAIL"
@@ -105,6 +118,7 @@ def evaluate_controls(store: Any, run_id: str, record_history: bool = True) -> l
         out.append({
             "id": c["id"], "name": c["name"], "category": c["category"], "description": c["description"],
             "status": status, "reason": reason, "evidence": evid[:50], "affected_hosts": hosts,
+            "freshness_pct": round(100 * sum(1 for e in evid if e["fresh"]) / len(evid)) if evid else 0,
             "finding_refs": fids[:50], "framework_ref": fw["mappings"].get(c["id"]),
             "frameworks": {f["id"]: f["mappings"].get(c["id"]) for f in prof["frameworks"]},
         })
@@ -154,7 +168,8 @@ def pulse_summary(store: Any, run_id: str) -> dict[str, Any]:
 
 
 def incidents(store: Any, run_id: str) -> list[dict[str, Any]]:
-    fs = _distinct(store.get_findings(run_id))
+    core.ensure_tables(store)
+    fs = _open(store, run_id)
     quarantined = {f["host_id"] for f in store.get_findings(run_id) if f.get("quarantined")}
     incs = correlate_incidents(fs, quarantined)
     for i in incs:
@@ -163,7 +178,7 @@ def incidents(store: Any, run_id: str) -> list[dict[str, Any]]:
 
 
 def overview(store: Any, run_id: str) -> dict[str, Any]:
-    fs = _distinct(store.get_findings(run_id))
+    fs = _open(store, run_id)
     sev = {s: sum(str(f["severity"]).upper() == s for f in fs) for s in ("CRITICAL", "HIGH", "MEDIUM", "LOW")}
     controls = evaluate_controls(store, run_id)
     dfs = q(store, "SELECT * FROM data_findings WHERE run_id=?", (run_id,))
@@ -196,7 +211,7 @@ def overview(store: Any, run_id: str) -> dict[str, Any]:
 def asset_list(store: Any, run_id: str) -> list[dict[str, Any]]:
     core.ensure_bootstrapped(store, run_id)
     assets = q(store, "SELECT * FROM assets WHERE run_id=?", (run_id,))
-    fs = _distinct(store.get_findings(run_id))
+    fs = _open(store, run_id)
     quarantined = {f["host_id"] for f in store.get_findings(run_id) if f.get("quarantined")}
     dfs = q(store, "SELECT host_id, COUNT(*) AS n FROM data_findings WHERE run_id=? GROUP BY host_id", (run_id,))
     dmap = {d["host_id"]: d["n"] for d in dfs}
@@ -277,5 +292,62 @@ def alerts(store: Any, run_id: str, severity: str = "", asset: str = "", status:
         if (severity and f["severity"].upper() != severity.upper()) or (asset and f["host_id"] != asset) \
                 or (status and st != status.upper()):
             continue
-        out.append({**f, "status": st, "incident_id": f"INC-{f['host_id']}"})
+        ev = f.get("evidence") or {}
+        summary = (
+            ev.get("description")
+            or ev.get("summary")
+            or (f"Rule {f.get('rule_id')} triggered on {f.get('host_id')}" + (f" ({ev.get('cve_id')})" if ev.get("cve_id") else ""))
+        )
+        out.append({**f, "status": st, "title": summary, "description": summary, "incident_id": f"INC-{f['host_id']}"})
     return out[:500]
+
+
+def remediate_control(store: Any, run_id: str, control_id: str) -> list[dict[str, Any]]:
+    """Simulated remediation of one control: resolve findings / secure data sources / reset integrity baseline."""
+    prof = active_profile(store, run_id)
+    c = next((x for x in prof["controls"] if x["id"].upper() == control_id.upper()), None)
+    if c is None:
+        raise KeyError(control_id)
+    chk = c["check"]
+    now = core.now_iso()
+    if chk["type"] == "rules":
+        core.resolve_findings(store, run_id, chk["rules"])
+    elif chk["type"].startswith("radar"):
+        core.run(store, "UPDATE data_sources SET exposure='private', encrypted=1 WHERE run_id=?", (run_id,))
+        core.run(store, "UPDATE remediation_tasks SET status='DONE', updated_at=? WHERE run_id=? AND kind='radar' AND status!='DONE'", (now, run_id))
+        core.scan(store, run_id)
+    elif chk["type"] == "integrity":
+        mx = q(store, "SELECT COALESCE(MAX(seq),0) AS m FROM events WHERE run_id=?", (run_id,))[0]["m"]
+        core.set_setting(store, run_id, "integrity_baseline_seq", str(mx))
+    return evaluate_controls(store, run_id)
+
+
+def remediate_all(store: Any, run_id: str) -> dict[str, Any]:
+    before = _score(evaluate_controls(store, run_id, False))
+    now = core.now_iso()
+    # 1. Resolve all open rule-based findings
+    core.resolve_findings(store, run_id)
+    # 2. Secure all data sources and mark remediation tasks DONE in one query
+    core.run(store, "UPDATE data_sources SET exposure='private', encrypted=1 WHERE run_id=?", (run_id,))
+    core.run(store, "UPDATE remediation_tasks SET status='DONE', updated_at=? WHERE run_id=? AND status!='DONE'", (now, run_id))
+    # 3. Reset integrity baseline
+    mx = q(store, "SELECT COALESCE(MAX(seq),0) AS m FROM events WHERE run_id=?", (run_id,))[0]["m"]
+    core.set_setting(store, run_id, "integrity_baseline_seq", str(mx))
+    # 4. Rescan once
+    core.scan(store, run_id)
+    controls = evaluate_controls(store, run_id)
+    return {"before": before, "after": _score(controls), "controls": controls}
+
+
+def breach(store: Any, run_id: str, kind: str = "data_leak") -> None:
+    """Simulated data-plane breach: plant public/unencrypted sources with critical classified content."""
+    core.ensure_bootstrapped(store, run_id)
+    srcs = q(store, "SELECT * FROM data_sources WHERE run_id=? ORDER BY source_id LIMIT 3", (run_id,))
+    ts = core.now_iso()
+    for s in srcs:
+        core.run(store, "UPDATE data_sources SET exposure='public', encrypted=0 WHERE source_id=?", (s["source_id"],))
+        core.run(store, "INSERT INTO data_findings VALUES (?,?,?,?,?,?,?,?,?,?,?,?)",
+                 (f"df-demo-{s['source_id'][-8:]}-{ts[-9:-1].replace(':','')}", run_id, s["source_id"], s["host_id"],
+                  "CREDENTIALS", "CRITICAL", 3, core.redact("db_password=EXAMPLE"), "public", 0, ts, "scan-demo"))
+    core.run(store, "DELETE FROM remediation_tasks WHERE run_id=? AND kind='radar' AND status='DONE'", (run_id,))
+

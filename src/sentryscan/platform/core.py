@@ -31,6 +31,7 @@ CREATE TABLE IF NOT EXISTS remediation_tasks (task_id TEXT PRIMARY KEY, run_id T
 CREATE TABLE IF NOT EXISTS pulse_history (run_id TEXT, ts TEXT, passing INTEGER, failing INTEGER, unknown INTEGER,
   evidence_required INTEGER, score INTEGER);
 CREATE TABLE IF NOT EXISTS settings (run_id TEXT, key TEXT, value TEXT, PRIMARY KEY (run_id, key));
+CREATE TABLE IF NOT EXISTS resolutions (run_id TEXT, finding_id TEXT, resolved_at TEXT, PRIMARY KEY (run_id, finding_id));
 CREATE TABLE IF NOT EXISTS scenarios (scenario_id TEXT PRIMARY KEY, name TEXT, config_json TEXT, status TEXT,
   result_json TEXT, created_at TEXT);
 """
@@ -190,18 +191,28 @@ def scan(store: Any, run_id: str, seed: int = 0) -> dict[str, Any]:
     scan_id, ts = f"scan-{run_id}-{n_prev + 1:03d}", now_iso()
     sources = q(store, "SELECT * FROM data_sources WHERE run_id=?", (run_id,))
     total = 0
+    inserts = []
+    updates = []
     for s in sources:
-        run(store, "DELETE FROM data_findings WHERE source_id=?", (s["source_id"],))
         hit = classify(_content(rng, policies), policies)
         for cid, (count, sample) in hit.items():
             base = sev.get(cid, "MEDIUM")
             risk = "CRITICAL" if s["exposure"] == "public" and SEV_RANK[base] >= 3 else base
-            run(store, "INSERT INTO data_findings VALUES (?,?,?,?,?,?,?,?,?,?,?,?)",
-                (f"df-{uuid.uuid4().hex[:8]}", run_id, s["source_id"], s["host_id"], cid, risk, count,
-                 redact(sample), s["exposure"], s["encrypted"], ts, scan_id))
+            inserts.append((
+                f"df-{uuid.uuid4().hex[:8]}", run_id, s["source_id"], s["host_id"], cid, risk, count,
+                redact(sample), s["exposure"], s["encrypted"], ts, scan_id
+            ))
             total += 1
-        run(store, "UPDATE data_sources SET last_scan=? WHERE source_id=?", (ts, s["source_id"]))
-    run(store, "INSERT INTO radar_scans VALUES (?,?,?,?,?)", (scan_id, run_id, ts, len(sources), total))
+        updates.append((ts, s["source_id"]))
+
+    with store._lock, store._conn:
+        store._conn.execute("DELETE FROM data_findings WHERE run_id=?", (run_id,))
+        if inserts:
+            store._conn.executemany("INSERT INTO data_findings VALUES (?,?,?,?,?,?,?,?,?,?,?,?)", inserts)
+        if updates:
+            store._conn.executemany("UPDATE data_sources SET last_scan=? WHERE source_id=?", updates)
+        store._conn.execute("INSERT INTO radar_scans VALUES (?,?,?,?,?)", (scan_id, run_id, ts, len(sources), total))
+
     return {"scan_id": scan_id, "sources": len(sources), "findings": total}
 
 
@@ -244,6 +255,31 @@ def update_task(store: Any, run_id: str, task_id: str, status: str | None, owner
         run(store, "UPDATE data_sources SET exposure='private', encrypted=1 WHERE source_id=?", (t["ref_id"],))
         scan(store, run_id)
     return q(store, "SELECT * FROM remediation_tasks WHERE task_id=?", (task_id,))[0]
+
+
+def resolve_findings(store: Any, run_id: str, rules: list[str] | None = None) -> int:
+    """Mark current findings (optionally only for given rule ids) as resolved (simulated remediation)."""
+    ensure_tables(store)
+    done = {r["finding_id"] for r in q(store, "SELECT finding_id FROM resolutions WHERE run_id=?", (run_id,))}
+    n, ts = 0, now_iso()
+    for f in store.get_findings(run_id):
+        if f["finding_id"] in done or (rules is not None and f["rule_id"] not in rules):
+            continue
+        run(store, "INSERT OR IGNORE INTO resolutions VALUES (?,?,?)", (run_id, f["finding_id"], ts))
+        n += 1
+    return n
+
+
+def reset_demo(store: Any, run_id: str) -> None:
+    """Undo simulated remediation, release the live-sim hold and rescan."""
+    ensure_tables(store)
+    run(store, "DELETE FROM resolutions WHERE run_id=?", (run_id,))
+    run(store, "DELETE FROM settings WHERE run_id=? AND key IN ('integrity_baseline_seq','demo_hold')", (run_id,))
+    run(store, "UPDATE data_sources SET exposure='public', encrypted=0 WHERE run_id=? AND exposure='private' "
+               "AND source_id IN (SELECT ref_id FROM remediation_tasks WHERE run_id=? AND kind='radar' AND status='DONE')",
+        (run_id, run_id))
+    run(store, "UPDATE remediation_tasks SET status='OPEN' WHERE run_id=? AND status='DONE'", (run_id,))
+    scan(store, run_id)
 
 
 def list_scenarios(store: Any) -> list[dict[str, Any]]:

@@ -1,0 +1,285 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>SentryScan: Assignment 2.2 — Socket Messaging, Framing & Autonomous Analyst</title>
+  <style>
+    @page {
+      size: A4;
+      margin: 16mm 14mm 16mm 14mm;
+      @bottom-right {
+        content: counter(page);
+      }
+    }
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+      font-size: 9.5pt;
+      line-height: 1.45;
+      color: #1e293b;
+      margin: 0;
+      padding: 0;
+    }
+    h1 {
+      font-size: 17pt;
+      color: #0f172a;
+      border-bottom: 2px solid #2563eb;
+      padding-bottom: 4px;
+      margin-top: 0;
+      margin-bottom: 8px;
+    }
+    h2 {
+      font-size: 12.5pt;
+      color: #1e40af;
+      border-bottom: 1px solid #cbd5e1;
+      padding-bottom: 3px;
+      margin-top: 18px;
+      margin-bottom: 8px;
+      page-break-after: avoid;
+    }
+    h3 {
+      font-size: 10.5pt;
+      color: #334155;
+      margin-top: 12px;
+      margin-bottom: 4px;
+      page-break-after: avoid;
+    }
+    p, ul, ol {
+      margin-top: 0;
+      margin-bottom: 8px;
+    }
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      margin: 10px 0;
+      font-size: 8.5pt;
+      page-break-inside: avoid;
+    }
+    th, td {
+      border: 1px solid #cbd5e1;
+      padding: 5px 7px;
+      text-align: left;
+      vertical-align: top;
+    }
+    th {
+      background-color: #f1f5f9;
+      font-weight: 600;
+      color: #0f172a;
+    }
+    tr:nth-child(even) {
+      background-color: #f8fafc;
+    }
+    pre, code {
+      font-family: "SFMono-Regular", Consolas, "Liberation Mono", Menlo, monospace;
+      font-size: 8pt;
+      background-color: #f1f5f9;
+      border-radius: 3px;
+    }
+    pre {
+      padding: 7px;
+      border: 1px solid #e2e8f0;
+      overflow-x: auto;
+      page-break-inside: avoid;
+    }
+    code {
+      padding: 1px 3px;
+    }
+    pre code {
+      padding: 0;
+      background: none;
+    }
+    hr {
+      border: none;
+      border-top: 1px solid #e2e8f0;
+      margin: 14px 0;
+    }
+  </style>
+</head>
+<body>
+<h1 id="sentryscan-assignment-22-socket-messaging-framing-autonomous-analyst">SentryScan: Assignment 2.2 — Socket Messaging, Framing &amp; Autonomous Analyst</h1>
+<p><strong>Course:</strong> 21CSE525T — Agent Technology<br />
+<strong>Assignment:</strong> 2.2 — Socket Messaging &amp; Autonomous Analyst<br />
+<strong>Student:</strong> R Ganesh [RA2212704010031]<br />
+<strong>Repository:</strong> https://github.com/drgeekg/SentryScan<br />
+<strong>Target Branch:</strong> <code>assignment/2.2-socket-messaging</code><br />
+<strong>Git Tag:</strong> <code>assignment-2.2</code><br />
+<strong>Status:</strong> Completed &amp; Verified  </p>
+<hr />
+<h2 id="1-executive-summary-theoretical-context">1. Executive Summary &amp; Theoretical Context</h2>
+<p>Assignment 2.2 transitions SentryScan into a <strong>distributed multi-agent architecture</strong> communicating over structured network sockets using formal speech-act performatives (Wooldridge, <em>MultiAgent Systems</em>).</p>
+<h3 id="11-speech-act-theory-agent-communication-languages-acl">1.1 Speech Act Theory &amp; Agent Communication Languages (ACL)</h3>
+<p>Agents do not communicate via raw passive remote procedure calls. They exchange communicative speech acts with intentional semantics:
+- <strong>Performatives:</strong> <code>ALERT</code> (informing critical findings), <code>PARAMS_UPDATE</code> (commanding operational parameter shifts), <code>TASK_REQUEST</code>, <code>CFP</code>, <code>PROPOSE</code>, and <code>ERROR</code>.
+- <strong>Closed Envelope Model:</strong> Standardized message schema containing <code>message_id</code>, <code>sender</code>, <code>recipient</code>, <code>performative</code>, <code>conversation_id</code>, <code>reply_to</code>, <code>timestamp</code>, and structured <code>payload</code>.</p>
+<h3 id="12-binary-stream-framing-fault-resilience">1.2 Binary Stream Framing &amp; Fault Resilience</h3>
+<p>TCP is an un-delimited byte stream. To guarantee reliable deserialization over network sockets:
+- <strong>Length-Prefixed Framing:</strong> Messages are prefixed with a 4-byte big-endian unsigned integer (<code>!I</code>), denoting exact payload byte count.
+- <strong>Partial Chunk Accumulation:</strong> <code>FrameReader</code> buffers chunked socket streams and handles packet fragmentation seamlessly.
+- <strong>Fault Isolation:</strong> Corrupted frames or non-JSON payloads are safely rejected at the transport boundary with an <code>ERROR</code> response, preventing agent daemon crashes.</p>
+<hr />
+<h2 id="2-architecture-implementation-specification">2. Architecture &amp; Implementation Specification</h2>
+<pre><code>  ┌────────────────────────┐                    ┌────────────────────────┐
+  │      Sensor Agent      │                    │     Analyst Agent      │
+  │   (Telemetry Producer) │                    │  (Autonomous Decision) │
+  └───────────┬────────────┘                    └───────────┬────────────┘
+              │                                             │
+              │ 1. Length-Prefixed Frame: ALERT             │
+              ├────────────────────────────────────────────►│ Ingest Finding
+              │    (fnd-000003: ProFTPd Exploit)            │ Adapt Policy:
+              │                                             │   - Cadence: 50ms
+              │                                             │   - Quarantine: True
+              │ 2. Length-Prefixed Frame: PARAMS_UPDATE     │
+              │◄────────────────────────────────────────────┤
+              │    (quarantine=True, scan_interval_ms=50)   │
+              │                                             │
+              │ 3. Corrupted Frame Injection (Simulated)    │
+              ├────────────────────────────────────────────►│ Boundary Guard:
+              │    (Non-JSON bytes / malformed header)      │ Catch BadFrame
+              │ 4. Structured Error Response: ERROR         │
+              │◄────────────────────────────────────────────┤
+</code></pre>
+<h3 id="21-autonomous-parameter-adaptation-policy-srcsentryscanagentsanalystpy">2.1 Autonomous Parameter Adaptation Policy (<code>src/sentryscan/agents/analyst.py</code>)</h3>
+<table>
+<thead>
+<tr>
+<th>Perceived Threat Condition</th>
+<th>Scan Cadence</th>
+<th>Quarantine Flag</th>
+<th>Forensic Port Sweep</th>
+<th>Action Rationale</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><strong>CRITICAL Severity Finding</strong></td>
+<td><code>50 ms</code> (High-Freq)</td>
+<td><code>True</code> (Immediate)</td>
+<td>Enabled (<code>[21, 22, 80, 443]</code>)</td>
+<td>Emergency containment of active exploit</td>
+</tr>
+<tr>
+<td><strong>HIGH Severity Finding</strong></td>
+<td><code>100 ms</code></td>
+<td><code>False</code></td>
+<td>Enabled (<code>[80, 443]</code>)</td>
+<td>Intensified surveillance on suspicious target</td>
+</tr>
+<tr>
+<td><strong>MEDIUM Severity Finding</strong></td>
+<td><code>250 ms</code></td>
+<td><code>False</code></td>
+<td>Disabled</td>
+<td>Standard elevated monitoring</td>
+</tr>
+<tr>
+<td><strong>LOW / INFO Telemetry</strong></td>
+<td><code>500 ms</code> (Nominal)</td>
+<td><code>False</code></td>
+<td>Disabled</td>
+<td>Resource-conserving background monitoring</td>
+</tr>
+</tbody>
+</table>
+<hr />
+<h2 id="3-rubric-compliance-verification-matrix">3. Rubric Compliance &amp; Verification Matrix</h2>
+<table>
+<thead>
+<tr>
+<th>Evaluation Criterion</th>
+<th>Implementation Component</th>
+<th>Evidence Artifact</th>
+<th style="text-align: center;">Status</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><strong>1. Agent Message Envelope &amp; Speech Acts</strong></td>
+<td><code>src/sentryscan/contracts/message.py</code>: <code>Message</code> envelope and <code>Performative</code> taxonomy (<code>ALERT</code>, <code>PARAMS_UPDATE</code>, <code>TASK_REQUEST</code>, <code>CFP</code>, <code>ERROR</code>, etc.)</td>
+<td><code>tests/unit/test_message.py</code><br><code>evidence/trace_excerpt.jsonl</code></td>
+<td style="text-align: center;"><strong>PASSED</strong></td>
+</tr>
+<tr>
+<td><strong>2. Length-Prefixed Binary Framing Protocol</strong></td>
+<td><code>src/sentryscan/transport/framing.py</code>: 4-byte big-endian unsigned length header (<code>!I</code>), <code>FrameReader</code> stream buffer, max frame limit enforcement</td>
+<td><code>tests/unit/test_transport.py</code> (<code>test_encode_frame_structure</code>, <code>test_frame_reader_partial_chunks</code>)</td>
+<td style="text-align: center;"><strong>PASSED</strong></td>
+</tr>
+<tr>
+<td><strong>3. TCP Socket Client &amp; Server Transport</strong></td>
+<td><code>src/sentryscan/transport/socket_transport.py</code>: <code>TCPSocketServer</code>, <code>TCPSocketClient</code>, thread-safe locks, background readers, graceful shutdown</td>
+<td><code>demos/demo_assignment_2_2.py</code><br><code>evidence/run_log.txt</code></td>
+<td style="text-align: center;"><strong>PASSED</strong></td>
+</tr>
+<tr>
+<td><strong>4. Transport Interface with In-Process Adapter</strong></td>
+<td><code>src/sentryscan/transport/interface.py</code>, <code>src/sentryscan/transport/in_process.py</code>: Full-duplex queue-backed transport protocol</td>
+<td><code>tests/unit/test_transport.py</code> (<code>test_in_process_transport_pair</code>), <code>demo_assignment_2_2.py</code> Step 5</td>
+<td style="text-align: center;"><strong>PASSED</strong></td>
+</tr>
+<tr>
+<td><strong>5. Autonomous Analyst Response (<code>PARAMS_UPDATE</code>)</strong></td>
+<td><code>src/sentryscan/agents/analyst.py</code>: Autonomous parameter policy adapting scan intervals (50ms/100ms/250ms/500ms), quarantine flags, and port sweeps</td>
+<td><code>tests/unit/test_analyst.py</code><br><code>evidence/run_log.txt</code> Step 3</td>
+<td style="text-align: center;"><strong>PASSED</strong></td>
+</tr>
+<tr>
+<td><strong>6. Reconnect with Exponential Backoff</strong></td>
+<td><code>src/sentryscan/transport/socket_transport.py</code>: <code>connect_with_retry(max_retries, initial_backoff, backoff_multiplier)</code></td>
+<td><code>tests/unit/test_transport.py</code> (<code>test_tcp_socket_client_reconnect_backoff</code>)</td>
+<td style="text-align: center;"><strong>PASSED</strong></td>
+</tr>
+<tr>
+<td><strong>7. Malformed Frame / Fault Resilience</strong></td>
+<td>Graceful isolation of corrupt/non-JSON payloads at socket boundary, returning <code>ERROR</code> performative without server crash</td>
+<td><code>demos/demo_assignment_2_2.py</code> Step 4<br><code>tests/unit/test_transport.py</code></td>
+<td style="text-align: center;"><strong>PASSED</strong></td>
+</tr>
+<tr>
+<td><strong>8. Multi-Terminal Demonstration Support</strong></td>
+<td><code>demos/demo_assignment_2_2.py</code> with <code>--mode server</code> and <code>--mode client</code> flags for two-terminal execution, alongside <code>--mode automated</code></td>
+<td><code>demos/demo_assignment_2_2.py</code><br><code>assignments/assignment_2_2/README.md</code></td>
+<td style="text-align: center;"><strong>PASSED</strong></td>
+</tr>
+<tr>
+<td><strong>9. Trace Persistence &amp; Single-Writer Auditing</strong></td>
+<td><code>src/sentryscan/observability/recorder.py</code>: Authoritative sequential JSONL event logging</td>
+<td><code>evidence/trace_excerpt.jsonl</code></td>
+<td style="text-align: center;"><strong>PASSED</strong></td>
+</tr>
+</tbody>
+</table>
+<hr />
+<h2 id="4-execution-results-empirical-evidence">4. Execution Results &amp; Empirical Evidence</h2>
+<h3 id="41-turn-by-turn-socket-execution-log-evidencerun_logtxt">4.1 Turn-by-Turn Socket Execution Log (<code>evidence/run_log.txt</code>)</h3>
+<ul>
+<li><strong>Step 1: TCP Server Initialization:</strong> Analyst agent listening on loopback <code>127.0.0.1:49152</code>.</li>
+<li><strong>Step 2: Client Connection:</strong> Sensor client connected with socket framing enabled.</li>
+<li><strong>Step 3: Critical Alert &amp; Adaptive Reaction:</strong></li>
+<li>Inbound Message: <code>ALERT</code> with payload finding <code>fnd-000003</code> (<code>CRITICAL</code>, <code>sim-host-002</code>, ProFTPd backdoor).</li>
+<li>Outbound Message: <code>PARAMS_UPDATE</code> with <code>quarantine_flag=True</code>, <code>scan_interval_ms=50</code>, and priority port sweeps enabled.</li>
+<li><strong>Step 4: Fault Injection Test:</strong> Injected malformed non-JSON binary frame. Analyst safely caught syntax violation and returned <code>ERROR</code> performative (<code>BAD_FRAME</code>); server remained 100% operational.</li>
+<li><strong>Step 5: In-Process Transport Parity:</strong> Verified identical message exchange semantics over in-process queues without socket overhead.</li>
+</ul>
+<hr />
+<h2 id="5-submission-package-reproduction-instructions">5. Submission Package &amp; Reproduction Instructions</h2>
+<h3 id="51-exact-submission-components">5.1 Exact Submission Components</h3>
+<ol>
+<li><strong>Report Document:</strong> <code>assignments/assignment_2_2/deliverables/SentryScan_Assignment_2_2_Report.pdf</code></li>
+<li><strong>Repository URL:</strong> <code>https://github.com/drgeekg/SentryScan</code></li>
+<li><strong>Target Branch:</strong> <code>assignment/2.2-socket-messaging</code></li>
+<li><strong>Immutable Git Tag:</strong> <code>assignment-2.2</code></li>
+<li><strong>Packaged ZIP Archive:</strong> <code>dist/SentryScan_assignment_2_2.zip</code></li>
+<li><strong>SHA-256 Checksum:</strong> <code>dist/SentryScan_assignment_2_2.zip.sha256</code></li>
+</ol>
+<h3 id="52-verification-commands">5.2 Verification Commands</h3>
+<pre><code class="language-bash"># Run automated end-to-end socket demonstration
+python demos/demo_assignment_2_2.py --mode automated
+
+# Test multi-terminal mode (Terminal 1: Server, Terminal 2: Client)
+# Terminal 1: python demos/demo_assignment_2_2.py --mode server
+# Terminal 2: python demos/demo_assignment_2_2.py --mode client
+
+# Run transport test suite
+pytest -v tests/unit/test_transport.py tests/unit/test_message.py
+</code></pre>
+</body>
+</html>

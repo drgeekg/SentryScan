@@ -441,6 +441,56 @@ def create_app(
         ]
         return {**ctrl, "tasks": tasks, "framework": summary["framework"], "profile": summary["profile"]}
 
+    @app.post("/api/runs/{run_id}/pulse/controls/{control_id}/remediate")
+    async def remediate_control_v2(run_id: str, control_id: str) -> dict[str, Any]:
+        from sentryscan.platform import pulse as platform_pulse
+        try:
+            platform_pulse.remediate_control(app.state.store, run_id, control_id)
+        except KeyError as err:
+            raise HTTPException(status_code=404, detail=f"Control {control_id} not found") from err
+        return platform_pulse.pulse_summary(app.state.store, run_id)
+
+    @app.post("/api/runs/{run_id}/pulse/remediate-all")
+    async def remediate_all_v2(run_id: str) -> dict[str, Any]:
+        from sentryscan.platform import core as platform_core
+        from sentryscan.platform import pulse as platform_pulse
+        platform_core.ensure_bootstrapped(app.state.store, run_id)
+        res = platform_pulse.remediate_all(app.state.store, run_id)
+        return {"before": res["before"], "after": res["after"],
+                **platform_pulse.pulse_summary(app.state.store, run_id)}
+
+    @app.post("/api/runs/{run_id}/demo/hold")
+    async def demo_hold(run_id: str, payload: dict[str, Any] = Body(default_factory=dict)) -> dict[str, Any]:
+        from sentryscan.platform import core as platform_core
+        platform_core.ensure_tables(app.state.store)
+        hold = bool(payload.get("hold", True))
+        platform_core.set_setting(app.state.store, run_id, "demo_hold", "1" if hold else "0")
+        return {"hold": hold}
+
+    @app.get("/api/runs/{run_id}/demo/state")
+    async def demo_state(run_id: str) -> dict[str, Any]:
+        from sentryscan.platform import core as platform_core
+        platform_core.ensure_tables(app.state.store)
+        return {"hold": platform_core.get_setting(app.state.store, run_id, "demo_hold", "0") == "1"}
+
+    @app.post("/api/runs/{run_id}/demo/reset")
+    async def demo_reset(run_id: str) -> dict[str, Any]:
+        from sentryscan.platform import core as platform_core
+        from sentryscan.platform import pulse as platform_pulse
+        platform_core.ensure_bootstrapped(app.state.store, run_id)
+        platform_core.reset_demo(app.state.store, run_id)
+        return platform_pulse.pulse_summary(app.state.store, run_id)
+
+    @app.post("/api/runs/{run_id}/demo/breach")
+    async def demo_breach(run_id: str, payload: dict[str, Any] = Body(default_factory=dict)) -> dict[str, Any]:
+        """Data breach (planted exposures) plus a telemetry attack burst, then re-evaluate."""
+        from sentryscan.platform import pulse as platform_pulse
+        platform_pulse.breach(app.state.store, run_id)
+        preset = str(payload.get("preset", "telnet_leak"))
+        await inject_telemetry(run_id, {"preset": preset, "host_id": payload.get("host_id") or "random",
+                                        "record_count": 5})
+        return platform_pulse.pulse_summary(app.state.store, run_id)
+
     @app.post("/api/runs/{run_id}/pulse/settings")
     async def post_pulse_settings_v2(
         run_id: str,
@@ -985,6 +1035,11 @@ def create_app(
     # -------------------------------------------------------------------------
     # Static Assets & Fallback HTML
     # -------------------------------------------------------------------------
+
+    @app.get("/control", response_class=HTMLResponse)
+    async def control_dashboard_page() -> str:
+        """Standalone demo control dashboard (no frontend build required)."""
+        return (Path(__file__).parent / "control.html").read_text(encoding="utf-8")
 
     dist_path = Path(static_dir) if static_dir is not None else Path("frontend/dist")
     if dist_path.exists() and (dist_path / "index.html").exists():

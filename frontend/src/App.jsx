@@ -216,6 +216,23 @@ export default function App() {
   const [stagedProfile, setStagedProfile] = useState("generic");
   const [stagedFramework, setStagedFramework] = useState("baseline");
   const [evaluatingPolaris, setEvaluatingPolaris] = useState(false);
+  const [openCtl, setOpenCtl] = useState(null);
+  const [fixing, setFixing] = useState(null);
+
+  const polarisAction = async (key, url, okMsg) => {
+    if (!runId || fixing) return;
+    setFixing(key);
+    try {
+      const res = await fetch(url, { method: "POST" });
+      if (!res.ok) throw new Error(`HTTP ${res.status}`);
+      setPulse(await res.json());
+      showToast(okMsg);
+    } catch (e) {
+      showToast(`POLARIS action failed: ${e.message}`);
+    } finally {
+      setFixing(null);
+    }
+  };
 
   // SENTRA Scanning State
   const [scanningSentra, setScanningSentra] = useState(false);
@@ -337,6 +354,7 @@ export default function App() {
     const wsUrl = `${proto}//${window.location.host}/ws/${runId}`;
     let ws;
     let pollTimer;
+    let summaryDebounceTimer;
     try {
       ws = new WebSocket(wsUrl);
       ws.onopen = () => {
@@ -345,12 +363,17 @@ export default function App() {
       };
       ws.onclose = () => setWsConnected(false);
       ws.onmessage = () => {
-        fetch(`/api/runs/${runId}/summary`)
-          .then((r) => (r.ok ? r.json() : null))
-          .then((s) => {
-            if (s) setSummary(s);
-          })
-          .catch(() => {});
+        if (!summaryDebounceTimer) {
+          summaryDebounceTimer = setTimeout(() => {
+            summaryDebounceTimer = null;
+            fetch(`/api/runs/${runId}/summary`)
+              .then((r) => (r.ok ? r.json() : null))
+              .then((s) => {
+                if (s) setSummary(s);
+              })
+              .catch(() => {});
+          }, 500);
+        }
       };
     } catch (_e) {
       setWsConnected(false);
@@ -596,7 +619,7 @@ export default function App() {
             className={`soc-nav-item ${route.page === "polaris" ? "active" : ""}`}
           >
             <span>POLARIS · Compliance</span>
-            <span className="soc-nav-badge">{pulse.score ?? 80}%</span>
+            <span className="soc-nav-badge">{pulse.score ?? "--"}%</span>
           </a>
 
           <div className="soc-nav-heading">Enterprise Fleet</div>
@@ -1078,11 +1101,11 @@ export default function App() {
                 <RingGaugeCard
                   title="Compliance Index"
                   subtitle={`POLARIS · ${(pulse.framework || "baseline").toUpperCase()}`}
-                  score={pulse.score ?? 80}
+                  score={pulse.score ?? 0}
                   status={pulse.score >= 80 ? "PASS" : "ATTENTION"}
                   metaLeft={{
                     label: "Controls Evaluated",
-                    value: pulse.controls?.length || 8,
+                    value: pulse.controls?.length ?? 0,
                   }}
                   metaRight={{
                     label: "Open Remediations",
@@ -1437,7 +1460,7 @@ export default function App() {
                           </td>
                           <td className="mono">{a.host_id}</td>
                           <td className="mono">{a.rule_id}</td>
-                          <td>{a.title || a.description}</td>
+                          <td>{a.title || a.description || (a.evidence && (a.evidence.description || a.evidence.summary)) || `Rule ${a.rule_id}`}</td>
                           <td>
                             <StatusPill
                               level={a.quarantined ? "critical" : "pass"}
@@ -1496,42 +1519,40 @@ export default function App() {
                       </tr>
                     </thead>
                     <tbody>
-                      {(radar.findings || []).map((f) => (
-                        <tr key={f.finding_id}>
-                          <td className="mono">{f.finding_id}</td>
-                          <td>
-                            <span className="soc-pill info">
-                              {f.category_label || f.category}
-                            </span>
-                          </td>
-                          <td>
-                            <StatusPill
-                              level={f.sensitivity}
-                              label={f.sensitivity}
-                            />
-                          </td>
-                          <td className="mono">{f.host_id}</td>
-                          <td>
-                            <StatusPill
-                              level={
-                                f.exposure_status === "internal_restricted"
-                                  ? "pass"
-                                  : "critical"
-                              }
-                              label={f.exposure_status}
-                            />
-                          </td>
-                          <td>
-                            <StatusPill
-                              level={f.encrypted ? "pass" : "critical"}
-                              label={f.encrypted ? "YES" : "NO"}
-                            />
-                          </td>
-                          <td className="mono" style={{ fontSize: 11.5 }}>
-                            {f.sample_redacted}
-                          </td>
-                        </tr>
-                      ))}
+                      {(radar.findings || []).map((f) => {
+                        const fid = f.df_id || f.finding_id;
+                        const cat = f.classification || f.category_label || f.category;
+                        const sev = f.severity || f.sensitivity || "MEDIUM";
+                        const exp = f.exposure || f.exposure_status || "internal";
+                        const samp = f.sample || f.sample_redacted || "-";
+                        return (
+                          <tr key={fid}>
+                            <td className="mono">{fid}</td>
+                            <td>
+                              <span className="soc-pill info">{cat}</span>
+                            </td>
+                            <td>
+                              <StatusPill level={sev} label={sev} />
+                            </td>
+                            <td className="mono">{f.host_id}</td>
+                            <td>
+                              <StatusPill
+                                level={exp === "public" ? "critical" : "pass"}
+                                label={exp.toUpperCase()}
+                              />
+                            </td>
+                            <td>
+                              <StatusPill
+                                level={f.encrypted ? "pass" : "critical"}
+                                label={f.encrypted ? "YES" : "NO"}
+                              />
+                            </td>
+                            <td className="mono" style={{ fontSize: 11.5 }}>
+                              {samp}
+                            </td>
+                          </tr>
+                        );
+                      })}
                     </tbody>
                   </table>
                 </div>
@@ -1542,90 +1563,142 @@ export default function App() {
           {/* ==============================================================
               PAGE 5: POLARIS WORKSPACE (#/polaris)
              ============================================================== */}
-          {route.page === "polaris" && (
+          {route.page === "polaris" && (() => {
+            const ctls = pulse.controls || [];
+            const cnt = (s) => ctls.filter((c) => c.status === s).length;
+            const score = pulse.score ?? 0;
+            const scoreColor = score >= 80 ? "#16a34a" : score >= 50 ? "#d97706" : "#dc2626";
+            const hist = (pulse.history || []).map((h) => h.score);
+            const spark = hist.length > 1
+              ? hist.map((v, i) => `${(i / (hist.length - 1)) * 300},${58 - v * 0.56}`).join(" ")
+              : null;
+            const fwNames = { baseline: "Baseline-8", iso27001: "ISO 27001", nistcsf: "NIST CSF" };
+            return (
             <div>
               <div className="soc-page-header">
                 <div>
-                  <h1 className="soc-page-title">
-                    POLARIS · Continuous Compliance &amp; Control Registry
-                  </h1>
+                  <h1 className="soc-page-title">POLARIS · Continuous Compliance &amp; Control Registry</h1>
                   <div className="soc-page-sub">
-                    Automated security framework mappings backed by continuous VIGIL and SENTRA telemetry evidence
+                    Controls evaluated continuously from VIGIL findings and SENTRA data exposure. Remediation is simulated.
                   </div>
                 </div>
                 <div style={{ display: "flex", gap: 10, alignItems: "center", flexWrap: "wrap" }}>
-                  <select
-                    className="soc-select"
-                    value={stagedProfile}
-                    onChange={(e) => setStagedProfile(e.target.value)}
-                  >
-                    {(pulse.available_profiles || ["generic", "healthcare"]).map((p) => (
-                      <option key={p} value={p}>
-                        {p.toUpperCase()}
-                      </option>
+                  <select className="soc-select" value={stagedProfile} onChange={(e) => setStagedProfile(e.target.value)}>
+                    {(pulse.available_profiles || []).map((p) => (
+                      <option key={p} value={p}>{p.toUpperCase()}</option>
                     ))}
                   </select>
-                  <select
-                    className="soc-select"
-                    value={stagedFramework}
-                    onChange={(e) => setStagedFramework(e.target.value)}
-                  >
+                  <select className="soc-select" value={stagedFramework} onChange={(e) => setStagedFramework(e.target.value)}>
                     <option value="baseline">Baseline-8</option>
                     <option value="iso27001">ISO/IEC 27001:2022</option>
                     <option value="nistcsf">NIST CSF 2.0</option>
                   </select>
-                  <button
-                    className="soc-btn soc-btn-primary"
-                    disabled={evaluatingPolaris}
-                    onClick={handleApplyPolarisSettings}
-                  >
-                    {evaluatingPolaris ? "Evaluating Controls..." : "Apply & Evaluate POLARIS Controls"}
+                  <button className="soc-btn soc-btn-primary" disabled={evaluatingPolaris} onClick={handleApplyPolarisSettings}>
+                    {evaluatingPolaris ? "Evaluating..." : "Apply & Evaluate"}
                   </button>
+                  <a className="soc-btn" href="/control" target="_blank" rel="noreferrer">Open Control Dashboard ↗</a>
                 </div>
+              </div>
+
+              <div className="soc-card" style={{ marginBottom: 20, display: "flex", gap: 28, alignItems: "center", flexWrap: "wrap" }}>
+                <div style={{ textAlign: "center" }}>
+                  <div
+                    style={{
+                      width: 110, height: 110, borderRadius: "50%", display: "grid", placeItems: "center",
+                      background: `conic-gradient(${scoreColor} ${score * 3.6}deg, rgba(128,128,128,.25) 0)`,
+                    }}
+                  >
+                    <div style={{ width: 84, height: 84, borderRadius: "50%", background: "var(--card-bg, #fff)", display: "grid", placeItems: "center", fontWeight: 700, fontSize: 24, color: scoreColor }}>
+                      {score}%
+                    </div>
+                  </div>
+                  <div className="mono" style={{ fontSize: 11, marginTop: 6 }}>COMPLIANCE</div>
+                </div>
+                {[["PASS", "Passing", "#16a34a"], ["FAIL", "Failing", "#dc2626"], ["UNKNOWN", "Unknown", "#d97706"], ["EVIDENCE_REQUIRED", "Need evidence", "#d97706"]].map(([k, l, c]) => (
+                  <div key={k}>
+                    <div style={{ fontSize: 30, fontWeight: 700, color: c }}>{cnt(k)}</div>
+                    <div className="mono" style={{ fontSize: 11 }}>{l}</div>
+                  </div>
+                ))}
+                {spark && (
+                  <svg viewBox="0 0 300 60" preserveAspectRatio="none" style={{ flex: 1, minWidth: 160, height: 60 }}>
+                    <polyline fill="none" stroke={scoreColor} strokeWidth="2" points={spark} />
+                  </svg>
+                )}
+                <button
+                  className="soc-btn soc-btn-primary"
+                  disabled={!!fixing || cnt("FAIL") === 0}
+                  onClick={() => polarisAction("all", `/api/runs/${runId}/pulse/remediate-all`, "All failing controls remediated (simulated)")}
+                >
+                  {fixing === "all" ? "Remediating..." : `Remediate all (${cnt("FAIL")})`}
+                </button>
               </div>
 
               <div className="soc-card" style={{ marginBottom: 20 }}>
                 <div className="soc-card-header">
-                  <div className="soc-card-title">
-                    Evaluated Controls ({pulse.controls?.length || 0})
-                  </div>
-                  <span className="mono" style={{ fontWeight: 700 }}>
-                    Compliance Score: {pulse.score ?? 80}%
-                  </span>
+                  <div className="soc-card-title">Evaluated Controls ({ctls.length})</div>
+                  <span className="mono" style={{ fontSize: 11 }}>Framework: {fwNames[pulse.framework] || pulse.framework}</span>
                 </div>
                 <div className="soc-table-wrap">
                   <table className="soc-table">
                     <thead>
                       <tr>
-                        <th>Control ID</th>
-                        <th>Framework Ref</th>
+                        <th>Control</th>
                         <th>Requirement</th>
+                        <th>{fwNames[pulse.framework] || "Framework"} Ref</th>
                         <th>Status</th>
                         <th>Evidence Freshness</th>
-                        <th>Affected Hosts</th>
+                        <th>Affected</th>
+                        <th></th>
                       </tr>
                     </thead>
                     <tbody>
-                      {(pulse.controls || []).map((c) => (
-                        <tr key={c.id}>
-                          <td className="mono" style={{ fontWeight: 700 }}>
-                            {c.id}
-                          </td>
-                          <td className="mono">{c.framework_ref}</td>
-                          <td>{c.title}</td>
-                          <td>
-                            <StatusPill level={c.status} label={c.status} />
-                          </td>
-                          <td className="mono">100%</td>
-                          <td className="mono">{c.affected_hosts?.length || 0} assets</td>
-                        </tr>
+                      {ctls.map((c) => (
+                        <React.Fragment key={c.id}>
+                          <tr style={{ cursor: "pointer" }} onClick={() => setOpenCtl(openCtl === c.id ? null : c.id)}>
+                            <td className="mono" style={{ fontWeight: 700 }}>{openCtl === c.id ? "▾" : "▸"} {c.id}</td>
+                            <td>{c.name}<div className="mono" style={{ fontSize: 11, opacity: 0.7 }}>{c.category}</div></td>
+                            <td className="mono">{c.framework_ref || "-"}</td>
+                            <td><StatusPill level={c.status} label={c.status} /></td>
+                            <td className="mono">{c.evidence?.length ? `${c.freshness_pct ?? 0}%` : "n/a"}</td>
+                            <td className="mono">{c.affected_hosts?.length ? `${c.affected_hosts.length} assets` : "fleet-wide"}</td>
+                            <td onClick={(e) => e.stopPropagation()}>
+                              {c.status === "FAIL" && (
+                                <button
+                                  className="soc-btn"
+                                  disabled={!!fixing}
+                                  onClick={() => polarisAction(c.id, `/api/runs/${runId}/pulse/controls/${c.id}/remediate`, `${c.id} remediated (simulated)`)}
+                                >
+                                  {fixing === c.id ? "..." : "Remediate"}
+                                </button>
+                              )}
+                            </td>
+                          </tr>
+                          {openCtl === c.id && (
+                            <tr>
+                              <td colSpan={7} style={{ background: "rgba(128,128,128,.08)" }}>
+                                <div style={{ padding: "6px 4px" }}>
+                                  <div><b>{c.reason}</b></div>
+                                  <div style={{ opacity: 0.75, margin: "4px 0 8px" }}>{c.description}</div>
+                                  {(c.evidence || []).slice(0, 8).map((e, i) => (
+                                    <div key={i} className="mono" style={{ fontSize: 12 }}>
+                                      [{e.source}] {e.summary} {e.fresh ? "· fresh" : "· stale"}
+                                    </div>
+                                  ))}
+                                  {!c.evidence?.length && <div className="mono" style={{ fontSize: 12 }}>No evidence collected.</div>}
+                                </div>
+                              </td>
+                            </tr>
+                          )}
+                        </React.Fragment>
                       ))}
                     </tbody>
                   </table>
                 </div>
               </div>
             </div>
-          )}
+            );
+          })()}
 
           {/* ==============================================================
               PAGE 6: ASSETS INVENTORY (#/assets)

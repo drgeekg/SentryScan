@@ -1,0 +1,326 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>SentryScan: Assignment 4.1 — Deliberative BDI Modelling & Reconsideration</title>
+  <style>
+    @page {
+      size: A4;
+      margin: 16mm 14mm 16mm 14mm;
+      @bottom-right {
+        content: counter(page);
+      }
+    }
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+      font-size: 9.5pt;
+      line-height: 1.45;
+      color: #1e293b;
+      margin: 0;
+      padding: 0;
+    }
+    h1 {
+      font-size: 17pt;
+      color: #0f172a;
+      border-bottom: 2px solid #2563eb;
+      padding-bottom: 4px;
+      margin-top: 0;
+      margin-bottom: 8px;
+    }
+    h2 {
+      font-size: 12.5pt;
+      color: #1e40af;
+      border-bottom: 1px solid #cbd5e1;
+      padding-bottom: 3px;
+      margin-top: 18px;
+      margin-bottom: 8px;
+      page-break-after: avoid;
+    }
+    h3 {
+      font-size: 10.5pt;
+      color: #334155;
+      margin-top: 12px;
+      margin-bottom: 4px;
+      page-break-after: avoid;
+    }
+    p, ul, ol {
+      margin-top: 0;
+      margin-bottom: 8px;
+    }
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      margin: 10px 0;
+      font-size: 8.5pt;
+      page-break-inside: avoid;
+    }
+    th, td {
+      border: 1px solid #cbd5e1;
+      padding: 5px 7px;
+      text-align: left;
+      vertical-align: top;
+    }
+    th {
+      background-color: #f1f5f9;
+      font-weight: 600;
+      color: #0f172a;
+    }
+    tr:nth-child(even) {
+      background-color: #f8fafc;
+    }
+    pre, code {
+      font-family: "SFMono-Regular", Consolas, "Liberation Mono", Menlo, monospace;
+      font-size: 8pt;
+      background-color: #f1f5f9;
+      border-radius: 3px;
+    }
+    pre {
+      padding: 7px;
+      border: 1px solid #e2e8f0;
+      overflow-x: auto;
+      page-break-inside: avoid;
+    }
+    code {
+      padding: 1px 3px;
+    }
+    pre code {
+      padding: 0;
+      background: none;
+    }
+    hr {
+      border: none;
+      border-top: 1px solid #e2e8f0;
+      margin: 14px 0;
+    }
+  </style>
+</head>
+<body>
+<h1 id="sentryscan-assignment-41-deliberative-bdi-modelling-reconsideration">SentryScan: Assignment 4.1 — Deliberative BDI Modelling &amp; Reconsideration</h1>
+<p><strong>Course:</strong> 21CSE525T — Agent Technology<br />
+<strong>Assignment:</strong> 4.1 — Deliberative BDI Modelling &amp; Reconsideration<br />
+<strong>Student:</strong> R Ganesh [RA2212704010031]<br />
+<strong>Repository:</strong> https://github.com/drgeekg/SentryScan<br />
+<strong>Target Branch:</strong> <code>assignment/4.1-bdi-modelling</code><br />
+<strong>Git Tag:</strong> <code>assignment-4.1</code><br />
+<strong>Status:</strong> Completed &amp; Verified  </p>
+<hr />
+<h2 id="1-executive-summary-theoretical-context">1. Executive Summary &amp; Theoretical Context</h2>
+<p>Assignment 4.1 implements the <strong>Belief–Desire–Intention (BDI) cognitive architecture</strong> (Bratman, 1987; Rao &amp; Georgeff, 1995; Wooldridge, Ch. 4) for SentryScan's Analyst Agent.</p>
+<h3 id="11-the-classical-bdi-paradigm">1.1 The Classical BDI Paradigm</h3>
+<p>A pure reflex agent reacts instantly without commitment to long-term goals. A BDI agent deliberates and commits to intentions:
+- <strong>Beliefs ($B$):</strong> The agent's knowledge about the operational environment (host states, open ports, observed vulnerabilities, active policies).
+- <strong>Desires ($D$):</strong> The potential goals or operational states the agent wishes to achieve (audit fleet, contain compromised hosts, surface critical alerts).
+- <strong>Intentions ($I$):</strong> The committed desires chosen for execution, organized into concrete procedural plans.</p>
+<h3 id="12-intention-reconsideration-epistemic-preemption">1.2 Intention Reconsideration &amp; Epistemic Preemption</h3>
+<p>An agent cannot re-deliberate after every minor percept (computational waste), nor can it pursue a plan stubbornly when the environment has changed catastrophically:
+- <strong>Kinny &amp; Georgeff (1991) Reconsideration Trade-off:</strong> SentryScan implements <em>bold-agent deliberation</em> with explicit <strong>material belief update filters</strong>.
+- <strong>Deliberative Preemption:</strong> Routine telemetry (e.g., informational banner) retains active plans. The arrival of a <code>CRITICAL</code> vulnerability finding triggers an immediate interrupt, cleanly abandoning obsolete intentions and adopting emergency containment.</p>
+<hr />
+<h2 id="2-architecture-implementation-specification">2. Architecture &amp; Implementation Specification</h2>
+<pre><code>                  Percepts (Telemetry / Messages)
+                                 │
+                                 ▼
+                     ┌──────────────────────┐
+                     │ Update Belief Base   │
+                     │    (BeliefBase)      │
+                     └──────────┬───────────┘
+                                │
+                                ▼
+                     ┌──────────────────────┐
+            No       │ Material Change in   │
+       ┌─────────────┤ Beliefs Detected?    │
+       │             └──────────┬───────────┘
+       │                        │ Yes
+       ▼                        ▼
+ ┌───────────┐       ┌──────────────────────┐
+ │ Continue  │       │ Re-deliberate &amp; Plan │
+ │ Active    │       │ 1. Filter Desires    │
+ │ Intention │       │ 2. Priority Argmax   │
+ └───────────┘       │ 3. Synthesize Steps  │
+                     └──────────┬───────────┘
+                                │
+                                ▼
+                     ┌──────────────────────┐
+                     │ Intention Transition │
+                     │ Old: ABANDONED       │
+                     │ New: ADOPTED         │
+                     └──────────────────────┘
+</code></pre>
+<h3 id="21-concrete-desires-intention-synthesis-srcsentryscanbdideliberationpy">2.1 Concrete Desires &amp; Intention Synthesis (<code>src/sentryscan/bdi/deliberation.py</code>)</h3>
+<table>
+<thead>
+<tr>
+<th>Desire Identifier</th>
+<th>Eligibility Condition</th>
+<th>Intention Plan Synthesized</th>
+<th>Action Generated</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>CONTAIN_COMPROMISED_HOSTS</code></td>
+<td>Active <code>CRITICAL</code> / <code>HIGH</code> finding on unquarantined host</td>
+<td>1. <code>QUARANTINE_HOST</code><br>2. <code>SET_SCAN_CADENCE (50ms)</code><br>3. <code>SCHEDULE_PRIORITY_PORTS</code></td>
+<td><code>quarantine_flag=True</code><br><code>cadence=50ms</code></td>
+</tr>
+<tr>
+<td><code>SURFACE_CRITICAL_FINDINGS</code></td>
+<td>Host quarantined; findings unacknowledged</td>
+<td>1. <code>PUBLISH_CRITICAL_ALERT</code><br>2. <code>SET_SCAN_CADENCE (100ms)</code></td>
+<td><code>cadence=100ms</code></td>
+</tr>
+<tr>
+<td><code>AUDIT_ASSIGNED_HOSTS</code></td>
+<td>Baseline state; no critical alerts active</td>
+<td>1. <code>SET_SCAN_CADENCE (250ms)</code><br>2. <code>DISPATCH_ROUTINE_PROBE</code></td>
+<td><code>cadence=250ms</code> (Nominal)</td>
+</tr>
+</tbody>
+</table>
+<hr />
+<h2 id="3-rubric-compliance-verification-matrix">3. Rubric Compliance &amp; Verification Matrix</h2>
+<table>
+<thead>
+<tr>
+<th>Evaluation Criterion</th>
+<th>Implementation Component</th>
+<th>Evidence Artifact</th>
+<th style="text-align: center;">Status</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><strong>1. Distinct Beliefs, Desires, and Intentions</strong></td>
+<td><code>src/sentryscan/bdi/beliefs.py</code>, <code>src/sentryscan/bdi/desires.py</code>, <code>src/sentryscan/bdi/intentions.py</code>: Epistemic separation into <code>BeliefBase</code>, <code>Desire</code>, and <code>Intention</code></td>
+<td><code>tests/unit/test_bdi_models.py</code><br><code>evidence/bdi_transition_log.md</code></td>
+<td style="text-align: center;"><strong>PASSED</strong></td>
+</tr>
+<tr>
+<td><strong>2. Deliberation &amp; Option Selection</strong></td>
+<td><code>src/sentryscan/bdi/deliberation.py</code>: Option generation, feasibility filtering, and dynamic priority ranking selecting $d^* = \arg\max Priority(d)$</td>
+<td><code>tests/unit/test_bdi_deliberation.py</code><br><code>demos/demo_assignment_4_1.py</code> Cycle 1</td>
+<td style="text-align: center;"><strong>PASSED</strong></td>
+</tr>
+<tr>
+<td><strong>3. Plan Synthesis &amp; Intention Steps</strong></td>
+<td><code>src/sentryscan/bdi/deliberation.py</code>: Instantiates concrete ordered steps (<code>QUARANTINE_HOST</code>, <code>SET_SCAN_CADENCE</code>, etc.) with status tracking</td>
+<td><code>tests/unit/test_bdi_deliberation.py</code><br><code>evidence/bdi_transition_log.md</code></td>
+<td style="text-align: center;"><strong>PASSED</strong></td>
+</tr>
+<tr>
+<td><strong>4. LangGraph Deliberative Workflow</strong></td>
+<td><code>src/sentryscan/graphs/analyst_graph.py</code>: Compiled LangGraph orchestrating <code>perceive</code> $  o$ <code>check_reconsideration</code> $    o$ <code>deliberate_and_plan</code> $  o$ <code>execute_step</code></td>
+<td><code>tests/unit/test_analyst_graph.py</code><br><code>src/sentryscan/agents/analyst.py</code></td>
+<td style="text-align: center;"><strong>PASSED</strong></td>
+</tr>
+<tr>
+<td><strong>5. Material Reconsideration Trigger</strong></td>
+<td><code>src/sentryscan/graphs/analyst_graph.py</code>: Detects escalations to <code>CRITICAL</code>/<code>HIGH</code> severity and triggers intentional preemption</td>
+<td><code>tests/integration/test_bdi_reconsideration.py</code><br><code>demos/demo_assignment_4_1.py</code> Cycle 3</td>
+<td style="text-align: center;"><strong>PASSED</strong></td>
+</tr>
+<tr>
+<td><strong>6. Clean Intention Abandonment &amp; Transition</strong></td>
+<td>Previous intention <code>intention-000001</code> cleanly transitioned to <code>ABANDONED</code> with recorded rationale rather than silent overwriting</td>
+<td><code>tests/integration/test_bdi_reconsideration.py</code><br><code>evidence/bdi_transition_log.md</code> Cycle 3</td>
+<td style="text-align: center;"><strong>PASSED</strong></td>
+</tr>
+<tr>
+<td><strong>7. Emergency Containment Execution</strong></td>
+<td>Autonomous quarantine flag (<code>quarantine_flag=True</code>) and high-frequency sampling (<code>50ms</code>) emitted via <code>PARAMS_UPDATE</code> message</td>
+<td><code>tests/unit/test_analyst.py</code><br><code>demos/demo_assignment_4_1.py</code> Cycle 3</td>
+<td style="text-align: center;"><strong>PASSED</strong></td>
+</tr>
+<tr>
+<td><strong>8. Post-Containment Intention Shift</strong></td>
+<td>Following host quarantine, agent autonomously transitions from <code>CONTAIN_COMPROMISED_HOSTS</code> to <code>SURFACE_CRITICAL_FINDINGS</code></td>
+<td><code>evidence/bdi_transition_log.md</code> Cycle 4</td>
+<td style="text-align: center;"><strong>PASSED</strong></td>
+</tr>
+<tr>
+<td><strong>9. Trace &amp; Single-Writer Auditing</strong></td>
+<td>Sequential event log recording message reception, state transitions, and generated parameter adaptations via <code>src/sentryscan/observability/recorder.py</code></td>
+<td><code>evidence/trace_excerpt.jsonl</code></td>
+<td style="text-align: center;"><strong>PASSED</strong></td>
+</tr>
+</tbody>
+</table>
+<hr />
+<h2 id="4-execution-results-empirical-evidence">4. Execution Results &amp; Empirical Evidence</h2>
+<h3 id="41-bdi-state-transition-reconsideration-log-evidencebdi_transition_logmd">4.1 BDI State Transition &amp; Reconsideration Log (<code>evidence/bdi_transition_log.md</code>)</h3>
+<table>
+<thead>
+<tr>
+<th>Cycle</th>
+<th>Trigger</th>
+<th>Target Host</th>
+<th>Severity</th>
+<th>Old Intention</th>
+<th>New Intention</th>
+<th>Reason</th>
+<th>Generated Action</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><strong>1 (Init)</strong></td>
+<td><code>INITIAL_DELIBERATION</code></td>
+<td><code>192.0.2.10</code></td>
+<td><code>INFO</code></td>
+<td>None</td>
+<td><code>intention-000001</code> (AUDIT)</td>
+<td>Initial boot</td>
+<td><code>NOMINAL (250ms)</code></td>
+</tr>
+<tr>
+<td><strong>2 (Routine)</strong></td>
+<td><code>ROUTINE_TELEMETRY</code></td>
+<td><code>192.0.2.20</code></td>
+<td><code>LOW</code></td>
+<td><code>intention-000001</code></td>
+<td>Retained (No Change)</td>
+<td>Non-material</td>
+<td><code>NOMINAL (500ms)</code></td>
+</tr>
+<tr>
+<td><strong>3 (Preempt)</strong></td>
+<td><code>MATERIAL_BELIEF_UPDATE</code></td>
+<td><code>sim-host-007</code></td>
+<td><strong><code>CRITICAL</code></strong></td>
+<td><code>intention-000001</code> [ABANDONED]</td>
+<td><code>intention-000002</code> (CONTAIN)</td>
+<td>Critical alert on host</td>
+<td><code>QUARANTINE=True (50ms)</code></td>
+</tr>
+<tr>
+<td><strong>4 (Shift)</strong></td>
+<td><code>CONTAINMENT_SATISFIED</code></td>
+<td><code>sim-host-007</code></td>
+<td><code>CRITICAL (Quar)</code></td>
+<td><code>intention-000002</code> [SUCCEEDED]</td>
+<td><code>intention-000003</code> (SURFACE)</td>
+<td>Containment satisfied</td>
+<td><code>DEEP_INSPECT (100ms)</code></td>
+</tr>
+</tbody>
+</table>
+<hr />
+<h2 id="5-submission-package-reproduction-instructions">5. Submission Package &amp; Reproduction Instructions</h2>
+<h3 id="51-exact-submission-components">5.1 Exact Submission Components</h3>
+<ol>
+<li><strong>Report Document:</strong> <code>assignments/assignment_4_1/deliverables/SentryScan_Assignment_4_1_Report.pdf</code></li>
+<li><strong>Repository URL:</strong> <code>https://github.com/drgeekg/SentryScan</code></li>
+<li><strong>Target Branch:</strong> <code>assignment/4.1-bdi-modelling</code></li>
+<li><strong>Immutable Git Tag:</strong> <code>assignment-4.1</code></li>
+<li><strong>Packaged ZIP Archive:</strong> <code>dist/SentryScan_assignment_4_1.zip</code></li>
+<li><strong>SHA-256 Checksum:</strong> <code>dist/SentryScan_assignment_4_1.zip.sha256</code></li>
+</ol>
+<h3 id="52-verification-commands">5.2 Verification Commands</h3>
+<pre><code class="language-bash"># Run BDI deliberation demonstration
+python demos/demo_assignment_4_1.py
+
+# Execute BDI unit and integration tests
+pytest -v tests/unit/test_bdi_models.py tests/unit/test_bdi_deliberation.py tests/integration/test_bdi_reconsideration.py
+</code></pre>
+</body>
+</html>

@@ -1,0 +1,243 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>SentryScan: Assignment 1.1 — PEAS & Environment Modelling</title>
+  <style>
+    @page {
+      size: A4;
+      margin: 16mm 14mm 16mm 14mm;
+      @bottom-right {
+        content: counter(page);
+      }
+    }
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+      font-size: 9.5pt;
+      line-height: 1.45;
+      color: #1e293b;
+      margin: 0;
+      padding: 0;
+    }
+    h1 {
+      font-size: 17pt;
+      color: #0f172a;
+      border-bottom: 2px solid #2563eb;
+      padding-bottom: 4px;
+      margin-top: 0;
+      margin-bottom: 8px;
+    }
+    h2 {
+      font-size: 12.5pt;
+      color: #1e40af;
+      border-bottom: 1px solid #cbd5e1;
+      padding-bottom: 3px;
+      margin-top: 18px;
+      margin-bottom: 8px;
+      page-break-after: avoid;
+    }
+    h3 {
+      font-size: 10.5pt;
+      color: #334155;
+      margin-top: 12px;
+      margin-bottom: 4px;
+      page-break-after: avoid;
+    }
+    p, ul, ol {
+      margin-top: 0;
+      margin-bottom: 8px;
+    }
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      margin: 10px 0;
+      font-size: 8.5pt;
+      page-break-inside: avoid;
+    }
+    th, td {
+      border: 1px solid #cbd5e1;
+      padding: 5px 7px;
+      text-align: left;
+      vertical-align: top;
+    }
+    th {
+      background-color: #f1f5f9;
+      font-weight: 600;
+      color: #0f172a;
+    }
+    tr:nth-child(even) {
+      background-color: #f8fafc;
+    }
+    pre, code {
+      font-family: "SFMono-Regular", Consolas, "Liberation Mono", Menlo, monospace;
+      font-size: 8pt;
+      background-color: #f1f5f9;
+      border-radius: 3px;
+    }
+    pre {
+      padding: 7px;
+      border: 1px solid #e2e8f0;
+      overflow-x: auto;
+      page-break-inside: avoid;
+    }
+    code {
+      padding: 1px 3px;
+    }
+    pre code {
+      padding: 0;
+      background: none;
+    }
+    hr {
+      border: none;
+      border-top: 1px solid #e2e8f0;
+      margin: 14px 0;
+    }
+  </style>
+</head>
+<body>
+<h1 id="sentryscan-assignment-11-peas-environment-modelling">SentryScan: Assignment 1.1 — PEAS &amp; Environment Modelling</h1>
+<p><strong>Course:</strong> 21CSE525T — Agent Technology<br />
+<strong>Assignment:</strong> 1.1 — PEAS &amp; Environment Modelling<br />
+<strong>Student:</strong> R Ganesh [RA2212704010031]<br />
+<strong>Repository:</strong> https://github.com/drgeekg/SentryScan<br />
+<strong>Target Branch:</strong> <code>assignment/1.1-peas-environment</code><br />
+<strong>Git Tag:</strong> <code>assignment-1.1</code><br />
+<strong>Status:</strong> Completed &amp; Verified  </p>
+<hr />
+<h2 id="1-executive-summary-theoretical-context">1. Executive Summary &amp; Theoretical Context</h2>
+<p>Assignment 1.1 establishes the foundational theoretical, behavioral, and architectural specifications for <strong>SentryScan</strong>—an authorized autonomous vulnerability scanner agent simulation designed for synthetic telemetry analysis.</p>
+<h3 id="11-problem-statement-agent-persona">1.1 Problem Statement &amp; Agent Persona</h3>
+<p>Modern enterprise security teams face severe alert fatigue and the operational hazards of intrusive live vulnerability scanning. SentryScan acts as an <strong>Autonomous Defensive Telemetry Analyst</strong>:
+- <strong>Defensive Posture:</strong> Operates strictly on <em>perceived telemetry</em> rather than active exploitation.
+- <strong>Safety Boundary:</strong> Synthetic simulation only. All host addresses strictly use IETF documentation ranges (RFC 5737: <code>192.0.2.0/24</code>, <code>198.51.100.0/24</code>, <code>203.0.113.0/24</code>; RFC 3849: <code>2001:db8::/32</code>). SentryScan never attempts live socket connections to these targets.
+- <strong>Untrusted Telemetry Guarantee:</strong> All banners and external strings are treated as untrusted data inputs, precluding injection attacks or arbitrary execution.</p>
+<h3 id="12-agent-vs-conventional-oop-paradigm-russell-norvig-ch-2-wooldridge">1.2 Agent vs. Conventional OOP Paradigm (Russell &amp; Norvig, Ch. 2; Wooldridge)</h3>
+<ul>
+<li><strong>Control Autonomy:</strong> SentryScan owns its thread of control. It evaluates resource budgets and operational utility before deciding whether to accept tasks, unlike passive OOP objects which execute methods unconditionally upon invocation.</li>
+<li><strong>Cognitive Mental State:</strong> SentryScan maintains epistemic mental states (Beliefs, Desires, Intentions) rather than raw encapsulated class properties.</li>
+<li><strong>Speech-Act Communication:</strong> Inter-agent interactions use formal performatives (<code>CFP</code>, <code>PROPOSE</code>, <code>ALERT</code>, <code>CONFIRM</code>) rather than rigid remote procedure calls (RPC).</li>
+</ul>
+<hr />
+<h2 id="2-architecture-implementation-specification">2. Architecture &amp; Implementation Specification</h2>
+<h3 id="21-formal-peas-framework">2.1 Formal PEAS Framework</h3>
+<table>
+<thead>
+<tr>
+<th>Component</th>
+<th>Specification for SentryScan</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><strong>Performance Measure ($P$)</strong></td>
+<td>- <strong>Detection Accuracy:</strong> High precision and recall on genuine exposures without false alarms on benign services.<br>- <strong>Data Integrity Defense:</strong> Detection rate of poisoned/mutated records without access to ground truth.<br>- <strong>System Stability &amp; Latency:</strong> Minimal queue turnaround time; bounded memory footprint; zero dropped events.<br>- <strong>Protocol Compliance:</strong> Handshake resolution rate in multi-agent negotiation; bounded rounds ($\le 5$); zero unauthorized message acceptances.<br>- <strong>Audit Completeness:</strong> 100% gap-free event sequence persistence (<code>seq</code>).</td>
+</tr>
+<tr>
+<td><strong>Environment ($E$)</strong></td>
+<td>- <strong>Simulated Endpoint Fleet:</strong> Heterogeneous synthetic hosts (<code>sim-host-001</code> … <code>sim-host-N</code>) generating concurrent telemetry.<br>- <strong>Telemetry Stream:</strong> Ingestion queue carrying normal baseline records, malformed payloads, and deliberately mutated (poisoned) records.<br>- <strong>Communication Channels:</strong> Loopback TCP sockets (<code>127.0.0.1</code>) and in-process message queues.<br>- <strong>Knowledge Repositories:</strong> Read-only CVE / NVD data interfaces and local offline caches.</td>
+</tr>
+<tr>
+<td><strong>Actuators ($A$)</strong></td>
+<td>- <strong>Finding Publisher:</strong> Emits structured <code>Finding</code> objects with deterministic severity, evidence links, and confidence scores.<br>- <strong>Event Recorder:</strong> Commits append-only chronological <code>AgentEvent</code> entries with monotonic <code>seq</code> to JSONL and SQLite sinks.<br>- <strong>Envelope Dispatcher:</strong> Constructs, signs (Ed25519), and transmits inter-agent messages (<code>ALERT</code>, <code>PARAMS_UPDATE</code>, <code>CFP</code>, <code>PROPOSE</code>, <code>ACCEPT</code>).<br>- <strong>BDI Intention Actuator:</strong> Modifies active goals, triggering plan revision or resource reallocation.<br>- <strong>Report Actuator:</strong> Generates structured JSON/CSV audit reports and Rich console dashboards.</td>
+</tr>
+<tr>
+<td><strong>Sensors ($S$)</strong></td>
+<td>- <strong>Telemetry Sensor:</strong> Stream receiver that parses and validates raw telemetry into typed <code>TelemetryRecord</code> objects.<br>- <strong>Integrity Sensor:</strong> Rule-based parser checking timestamp drift, hash duplication, service-banner mismatch, and prompt injection strings.<br>- <strong>Socket / Network Sensor:</strong> TCP frame listener decoding length-prefixed JSON envelopes and validating security credentials.<br>- <strong>Knowledge Sensor:</strong> Client querying local CVE cache and external NVD endpoints for vulnerability enrichment.</td>
+</tr>
+</tbody>
+</table>
+<h3 id="22-environment-classification-russell-norvig-7-dimensions">2.2 Environment Classification (Russell &amp; Norvig 7 Dimensions)</h3>
+<ol>
+<li><strong>Partially Observable:</strong> The agent observes only surface-level telemetry emitted by devices (ports, service names, version banners). It cannot inspect remote kernel memory or filesystems, and ground-truth poisoning labels are hidden in an isolated evaluator sidecar.</li>
+<li><strong>Stochastic:</strong> While internal agent reasoning is deterministic, the external telemetry stream introduces variable queue latency, concurrent thread interleaving, synthetic network jitter, and probabilistic injection operators.</li>
+<li><strong>Sequential:</strong> Decisions constrain future states: suspect record flags update device risk baselines, findings alter BDI beliefs, and task awards consume execution budgets.</li>
+<li><strong>Dynamic:</strong> The environment evolves continuously as background daemons generate telemetry while scanner workers deliberate.</li>
+<li><strong>Discrete:</strong> Network ports ($1 \dots 65535$), performatives (<code>ALERT</code>, <code>CFP</code>, etc.), severities (<code>LOW</code> to <code>CRITICAL</code>), and event sequences ($seq \in \mathbb{N}$) are discrete.</li>
+<li><strong>Multi-Agent:</strong> Supervisor, Scout, Triage, and Analyst agents interact with distinct utilities via Contract-Net negotiation.</li>
+<li><strong>Known:</strong> Environmental laws (schemas, rules, protocols, utility equations) are fully known to the agent design.</li>
+</ol>
+<hr />
+<h2 id="3-rubric-compliance-verification-matrix">3. Rubric Compliance &amp; Verification Matrix</h2>
+<table>
+<thead>
+<tr>
+<th>Evaluation Criterion</th>
+<th>Specific Requirement</th>
+<th>Specification Section</th>
+<th>Evidence Artifact &amp; Verification</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><strong>1. Agent Persona &amp; Problem Formulation</strong></td>
+<td>Clear definition of agent persona, problem context, and operational safety boundary</td>
+<td>Section 1: Persona &amp; Problem Statement</td>
+<td><code>deliverables/SentryScan_Design_Specification.md#L1-L36</code><br><code>deliverables/SentryScan_Design_Specification.pdf</code> (Pages 1–2)</td>
+</tr>
+<tr>
+<td><strong>2. Formal PEAS Framework</strong></td>
+<td>Comprehensive breakdown of Performance measure ($P$), Environment ($E$), Actuators ($A$), and Sensors ($S$) with quantifiable metrics</td>
+<td>Section 2: PEAS Framework Formulation</td>
+<td><code>deliverables/SentryScan_Design_Specification.md#L38-L58</code><br><code>deliverables/SentryScan_Design_Specification.pdf</code> (Pages 2–3)</td>
+</tr>
+<tr>
+<td><strong>3. Environment Classification</strong></td>
+<td>Rigorous evaluation across all 7 Russell &amp; Norvig dimensions with theoretical and domain grounding</td>
+<td>Section 3: Environment Classification</td>
+<td><code>deliverables/SentryScan_Design_Specification.md#L60-L80</code><br><code>deliverables/SentryScan_Design_Specification.pdf</code> (Pages 3–4)</td>
+</tr>
+<tr>
+<td><strong>4. Agent Architecture vs. OOP Comparison</strong></td>
+<td>Detailed architectural comparison citing autonomy, cognitive states, situatedness, and speech acts, referencing the Unit-1 paradigm</td>
+<td>Section 4: Agent Architecture vs. Conventional OOP</td>
+<td><code>deliverables/SentryScan_Design_Specification.md#L82-L135</code><br><code>deliverables/SentryScan_Design_Specification.pdf</code> (Pages 5–6)</td>
+</tr>
+<tr>
+<td><strong>5. Architectural &amp; Data Flow Diagrams</strong></td>
+<td>Clear visual diagrams depicting perception, integrity checks, rule engine, and persistent storage</td>
+<td>Section 5: Initial Architecture &amp; Data Flow</td>
+<td><code>deliverables/diagrams/architecture.svg</code><br><code>deliverables/diagrams/environment_model.svg</code><br><code>deliverables/SentryScan_Design_Specification.pdf</code> (Pages 7–8)</td>
+</tr>
+<tr>
+<td><strong>6. Future Multi-Agent Extensions</strong></td>
+<td>Concrete expansion roadmap linking reflex agent to concurrency, sockets, LangGraph, utility, and BDI</td>
+<td>Section 6: Future Multi-Agent &amp; Deliberative Extensions</td>
+<td><code>deliverables/SentryScan_Design_Specification.md#L137-L180</code><br><code>deliverables/SentryScan_Design_Specification.pdf</code> (Pages 8–9)</td>
+</tr>
+<tr>
+<td><strong>7. Submission &amp; Packaging Integrity</strong></td>
+<td>Clean git history, merge commit, immutable tag, and verified archive packaging</td>
+<td>Monorepo root and git history</td>
+<td>Git Tag: <code>assignment-1.1</code><br>Archive: <code>dist/SentryScan_assignment_1_1.zip</code></td>
+</tr>
+</tbody>
+</table>
+<hr />
+<h2 id="4-execution-results-empirical-evidence">4. Execution Results &amp; Empirical Evidence</h2>
+<ul>
+<li><strong>Specification Deliverable:</strong> Complete 187-line comprehensive design document compiled to pixel-perfect vector PDF.</li>
+<li><strong>Architectural Diagrams Generated:</strong></li>
+<li><code>architecture.svg</code>: Sense-Parse-Decide-Act data pipeline and persistent event bus.</li>
+<li><code>environment_model.svg</code>: Telemetry ingestion boundary, trust perimeter, and documentation address space.</li>
+<li><strong>Verification Checklist:</strong> All 7 acceptance items verified in <code>assignments/assignment_1_1/evidence/checklist.md</code>.</li>
+</ul>
+<hr />
+<h2 id="5-submission-package-reproduction-instructions">5. Submission Package &amp; Reproduction Instructions</h2>
+<h3 id="51-exact-submission-components">5.1 Exact Submission Components</h3>
+<ol>
+<li><strong>Report Document:</strong> <code>assignments/assignment_1_1/deliverables/SentryScan_Assignment_1_1_Report.pdf</code></li>
+<li><strong>Repository URL:</strong> <code>https://github.com/drgeekg/SentryScan</code></li>
+<li><strong>Target Branch:</strong> <code>assignment/1.1-peas-environment</code></li>
+<li><strong>Immutable Git Tag:</strong> <code>assignment-1.1</code></li>
+<li><strong>Packaged ZIP Archive:</strong> <code>dist/SentryScan_assignment_1_1.zip</code></li>
+<li><strong>SHA-256 Checksum:</strong> <code>dist/SentryScan_assignment_1_1.zip.sha256</code></li>
+</ol>
+<h3 id="52-verification-commands">5.2 Verification Commands</h3>
+<pre><code class="language-bash"># Re-generate specification HTML and PDF
+python scripts/export_specification_pdf.py
+
+# Package submission archive from immutable tag
+python scripts/package_assignment.py assignment-1.1
+</code></pre>
+</body>
+</html>

@@ -1,0 +1,330 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>SentryScan: Assignment 3.1 — Multi-Agent Coordination, Negotiation & LangGraph</title>
+  <style>
+    @page {
+      size: A4;
+      margin: 16mm 14mm 16mm 14mm;
+      @bottom-right {
+        content: counter(page);
+      }
+    }
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+      font-size: 9.5pt;
+      line-height: 1.45;
+      color: #1e293b;
+      margin: 0;
+      padding: 0;
+    }
+    h1 {
+      font-size: 17pt;
+      color: #0f172a;
+      border-bottom: 2px solid #2563eb;
+      padding-bottom: 4px;
+      margin-top: 0;
+      margin-bottom: 8px;
+    }
+    h2 {
+      font-size: 12.5pt;
+      color: #1e40af;
+      border-bottom: 1px solid #cbd5e1;
+      padding-bottom: 3px;
+      margin-top: 18px;
+      margin-bottom: 8px;
+      page-break-after: avoid;
+    }
+    h3 {
+      font-size: 10.5pt;
+      color: #334155;
+      margin-top: 12px;
+      margin-bottom: 4px;
+      page-break-after: avoid;
+    }
+    p, ul, ol {
+      margin-top: 0;
+      margin-bottom: 8px;
+    }
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      margin: 10px 0;
+      font-size: 8.5pt;
+      page-break-inside: avoid;
+    }
+    th, td {
+      border: 1px solid #cbd5e1;
+      padding: 5px 7px;
+      text-align: left;
+      vertical-align: top;
+    }
+    th {
+      background-color: #f1f5f9;
+      font-weight: 600;
+      color: #0f172a;
+    }
+    tr:nth-child(even) {
+      background-color: #f8fafc;
+    }
+    pre, code {
+      font-family: "SFMono-Regular", Consolas, "Liberation Mono", Menlo, monospace;
+      font-size: 8pt;
+      background-color: #f1f5f9;
+      border-radius: 3px;
+    }
+    pre {
+      padding: 7px;
+      border: 1px solid #e2e8f0;
+      overflow-x: auto;
+      page-break-inside: avoid;
+    }
+    code {
+      padding: 1px 3px;
+    }
+    pre code {
+      padding: 0;
+      background: none;
+    }
+    hr {
+      border: none;
+      border-top: 1px solid #e2e8f0;
+      margin: 14px 0;
+    }
+  </style>
+</head>
+<body>
+<h1 id="sentryscan-assignment-31-multi-agent-coordination-negotiation-langgraph">SentryScan: Assignment 3.1 — Multi-Agent Coordination, Negotiation &amp; LangGraph</h1>
+<p><strong>Course:</strong> 21CSE525T — Agent Technology<br />
+<strong>Assignment:</strong> 3.1 — Multi-Agent Coordination &amp; Negotiation<br />
+<strong>Student:</strong> R Ganesh [RA2212704010031]<br />
+<strong>Repository:</strong> https://github.com/drgeekg/SentryScan<br />
+<strong>Target Branch:</strong> <code>assignment/3.1-multi-agent-coordination</code><br />
+<strong>Git Tag:</strong> <code>assignment-3.1</code><br />
+<strong>Status:</strong> Completed &amp; Verified  </p>
+<hr />
+<h2 id="1-executive-summary-theoretical-context">1. Executive Summary &amp; Theoretical Context</h2>
+<p>Assignment 3.1 implements a distributed <strong>Multi-Agent Coordination &amp; Negotiation architecture</strong> orchestrated by a compiled LangGraph state workflow, modeling the classical <strong>FIPA Contract-Net Protocol (CNP)</strong> (Smith, 1980; Wooldridge, Ch. 7).</p>
+<h3 id="11-conflicting-agent-roles-rational-self-interest">1.1 Conflicting Agent Roles &amp; Rational Self-Interest</h3>
+<p>Rather than homogeneous workers, SentryScan coordinates specialized agents with distinct operational preferences:
+- <strong>Scout Agent:</strong> Maximizes <em>host coverage breadth</em> across the network fleet.
+- <strong>Triage Agent:</strong> Maximizes <em>critical severity risk mitigation</em>, prioritizing known high-risk hosts.
+- <strong>Supervisor Agent:</strong> Acts as the auctioneer, balancing budget constraints and optimizing global system utility.</p>
+<h3 id="12-bounded-contract-net-negotiation-protocol">1.2 Bounded Contract-Net Negotiation Protocol</h3>
+<ol>
+<li>Supervisor broadcasts <code>Call for Proposals (CFP)</code> specifying constraints (max cost, deadline).</li>
+<li>Scout and Triage compute candidate plans and return formal <code>PROPOSE</code> bids.</li>
+<li>Supervisor evaluates bids via an objective utility function. If constraints are unsatisfied, Supervisor issues <code>COUNTERPROPOSE</code> with relaxed tolerances.</li>
+<li>When a bid satisfies criteria, Supervisor issues <code>ACCEPT</code> to the winning contractor and <code>REJECT</code> to the other. Winning agent sends <code>CONFIRM</code>.</li>
+<li>Negotiation terminates within a hard bounded limit ($\le 5$ rounds); if consensus is unachievable, terminates safely in <code>UNRESOLVED</code>.</li>
+</ol>
+<hr />
+<h2 id="2-architecture-implementation-specification">2. Architecture &amp; Implementation Specification</h2>
+<pre><code>                       ┌────────────────────────┐
+                       │    Supervisor Agent    │
+                       │ (LangGraph Coordinator)│
+                       └───────────┬────────────┘
+                                   │
+                ┌──────────────────┴──────────────────┐
+                │ Broadcast CFP (Budget Constraints)  │
+                ▼                                     ▼
+     ┌──────────────────────┐              ┌──────────────────────┐
+     │     Scout Agent      │              │     Triage Agent     │
+     │  (Coverage Focus)    │              │   (Risk Priority)    │
+     └──────────┬───────────┘              └──────────┬───────────┘
+                │ Submit Proposal                     │ Submit Proposal
+                │ (batch-03, cov=0.2, cost=11)        │ (batch-02, cov=0.54, cost=13)
+                ▼                                     ▼
+     ┌────────────────────────────────────────────────────────────┐
+     │       Supervisor Scoring &amp; Evaluation (score_bid)          │
+     │      Constraint Relax -&gt; Round 2 Counterproposal           │
+     └──────────────────────────────┬─────────────────────────────┘
+                                    │
+                                    ▼
+                     AWARD: Scout Agent Accepted
+                     Dynamic Fan-Out via Send(&quot;scanner_worker&quot;)
+</code></pre>
+<h3 id="21-dynamic-runtime-fan-out-via-langgraph-send">2.1 Dynamic Runtime Fan-Out via LangGraph <code>Send</code></h3>
+<p>Once the winning proposal is awarded, the supervisor graph dynamically branches execution to parallel worker instances:</p>
+<pre><code class="language-python"># Dispatches parallel scanner workers per awarded telemetry batch
+return [Send(&quot;scanner_worker&quot;, {&quot;batch_id&quot;: b, &quot;run_id&quot;: state[&quot;run_id&quot;]}) 
+        for b in awarded_proposal.batch_ids]
+</code></pre>
+<hr />
+<h2 id="3-rubric-compliance-verification-matrix">3. Rubric Compliance &amp; Verification Matrix</h2>
+<table>
+<thead>
+<tr>
+<th>Evaluation Criterion</th>
+<th>Implementation Component</th>
+<th>Evidence Artifact</th>
+<th style="text-align: center;">Status</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><strong>1. LangGraph Supervisor Workflow</strong></td>
+<td><code>src/sentryscan/graphs/supervisor.py</code>: <code>StateGraph(SupervisorState)</code> with negotiation, worker fan-out, and result aggregation</td>
+<td><code>tests/unit/test_supervisor_graph.py</code><br><code>demos/demo_assignment_3_1.py</code> Step 2</td>
+<td style="text-align: center;"><strong>PASSED</strong></td>
+</tr>
+<tr>
+<td><strong>2. Role Separation (Scout vs. Triage)</strong></td>
+<td><code>src/sentryscan/agents/scout.py</code> (coverage-maximizing) and <code>src/sentryscan/agents/triage.py</code> (risk-prioritizing)</td>
+<td><code>tests/unit/test_proposal_roles.py</code><br><code>evidence/negotiation_timeline.md</code></td>
+<td style="text-align: center;"><strong>PASSED</strong></td>
+</tr>
+<tr>
+<td><strong>3. Contract-Net Negotiation Protocol</strong></td>
+<td><code>src/sentryscan/negotiation/protocol.py</code>: <code>CFP</code> $  o$ <code>PROPOSE</code> $  o$ <code>COUNTERPROPOSE</code> $   o$ <code>ACCEPT</code> / <code>REJECT</code> $    o$ <code>CONFIRM</code></td>
+<td><code>evidence/negotiation_timeline.md</code><br><code>tests/unit/test_negotiation.py</code></td>
+<td style="text-align: center;"><strong>PASSED</strong></td>
+</tr>
+<tr>
+<td><strong>4. Inline Bid Scoring Seam (<code>score_bid</code>)</strong></td>
+<td><code>src/sentryscan/negotiation/scoring.py</code>: Objective formula over normalized coverage, cost, time, and risk with hard constraint filtering ($-\infty$)</td>
+<td><code>tests/unit/test_negotiation.py</code> (<code>test_score_bid_valid</code>, <code>test_score_bid_constraint_violations</code>)</td>
+<td style="text-align: center;"><strong>PASSED</strong></td>
+</tr>
+<tr>
+<td><strong>5. Dynamic Runtime Fan-Out via <code>Send</code></strong></td>
+<td><code>src/sentryscan/graphs/supervisor.py</code>: Returns <code>[Send("scanner_worker", ...)]</code> dynamically dispatching parallel worker instances per awarded batch</td>
+<td><code>tests/unit/test_supervisor_graph.py</code><br><code>evidence/run_log.txt</code> Step 2</td>
+<td style="text-align: center;"><strong>PASSED</strong></td>
+</tr>
+<tr>
+<td><strong>6. Provider-Neutral Advisory LLM Layer</strong></td>
+<td><code>src/sentryscan/llm/</code>: <code>LLMProvider</code> protocol with <code>DeterministicLLMProvider</code> (offline template generation) and <code>FakeLLMProvider</code></td>
+<td><code>tests/unit/test_llm.py</code><br><code>tests/integration/test_multi_agent_coordination.py</code></td>
+<td style="text-align: center;"><strong>PASSED</strong></td>
+</tr>
+<tr>
+<td><strong>7. Bounded Loop &amp; <code>UNRESOLVED</code> Termination</strong></td>
+<td>Hard limit (default: 5 rounds) terminating safely in <code>UNRESOLVED</code> when constraints cannot be satisfied</td>
+<td><code>tests/unit/test_negotiation.py</code> (<code>test_negotiation_unresolved_after_max_rounds</code>)</td>
+<td style="text-align: center;"><strong>PASSED</strong></td>
+</tr>
+<tr>
+<td><strong>8. Determinism Contract (LLM Off)</strong></td>
+<td>Deterministic single-threaded execution ensures 0 drift across runs with LLM off or deterministic provider</td>
+<td><code>tests/integration/test_multi_agent_coordination.py</code> (<code>test_trace_identical_with_llm_off</code>)</td>
+<td style="text-align: center;"><strong>PASSED</strong></td>
+</tr>
+<tr>
+<td><strong>9. Trace Persistence &amp; Single-Writer Auditing</strong></td>
+<td>Sequential JSONL event log capturing every message, proposal, and finding via <code>src/sentryscan/observability/recorder.py</code></td>
+<td><code>evidence/trace_excerpt.jsonl</code></td>
+<td style="text-align: center;"><strong>PASSED</strong></td>
+</tr>
+</tbody>
+</table>
+<hr />
+<h2 id="4-execution-results-empirical-evidence">4. Execution Results &amp; Empirical Evidence</h2>
+<h3 id="41-turn-by-turn-negotiation-timeline-evidencenegotiation_timelinemd">4.1 Turn-by-Turn Negotiation Timeline (<code>evidence/negotiation_timeline.md</code>)</h3>
+<table>
+<thead>
+<tr>
+<th>Step</th>
+<th>Sender</th>
+<th>Receiver</th>
+<th>Performative</th>
+<th>Summary</th>
+<th>Nonce</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>1</td>
+<td><code>supervisor</code></td>
+<td><code>scout</code></td>
+<td><code>CFP</code></td>
+<td>Round 1 Constraints: <code>max_cost=10.5, max_time=250.0</code></td>
+<td><code>30877432d1026706</code></td>
+</tr>
+<tr>
+<td>2</td>
+<td><code>supervisor</code></td>
+<td><code>triage</code></td>
+<td><code>CFP</code></td>
+<td>Round 1 Constraints: <code>max_cost=10.5, max_time=250.0</code></td>
+<td><code>d7e805da846a32c3</code></td>
+</tr>
+<tr>
+<td>3</td>
+<td><code>scout</code></td>
+<td><code>supervisor</code></td>
+<td><code>PROPOSE</code></td>
+<td>Batches: <code>['batch-03']</code>, Cost: 11.0, Coverage: 0.20</td>
+<td><code>bb81e3c29b621792</code></td>
+</tr>
+<tr>
+<td>4</td>
+<td><code>triage</code></td>
+<td><code>supervisor</code></td>
+<td><code>PROPOSE</code></td>
+<td>Batches: <code>['batch-02']</code>, Cost: 13.0, Coverage: 0.54</td>
+<td><code>73c8eb5bb682575e</code></td>
+</tr>
+<tr>
+<td>5-6</td>
+<td><code>supervisor</code></td>
+<td>Both</td>
+<td><code>COUNTERPROPOSE</code></td>
+<td>Round 2 Constraints Relaxed: <code>max_cost=12.075, max_time=287.5</code></td>
+<td>—</td>
+</tr>
+<tr>
+<td>7-8</td>
+<td>Both</td>
+<td><code>supervisor</code></td>
+<td><code>PROPOSE</code></td>
+<td>Re-submitted matching proposals under relaxed budget</td>
+<td>—</td>
+</tr>
+<tr>
+<td>9</td>
+<td><code>supervisor</code></td>
+<td><code>scout</code></td>
+<td><code>ACCEPT</code></td>
+<td><strong>AWARDED:</strong> <code>['batch-03']</code>, Score: <code>-0.1256</code></td>
+<td><code>71722f244f58d669</code></td>
+</tr>
+<tr>
+<td>10</td>
+<td><code>supervisor</code></td>
+<td><code>triage</code></td>
+<td><code>REJECT</code></td>
+<td>Rejected: Lower relative utility score under cost cap</td>
+<td><code>cbee3772a0770217</code></td>
+</tr>
+<tr>
+<td>11</td>
+<td><code>scout</code></td>
+<td><code>supervisor</code></td>
+<td><code>CONFIRM</code></td>
+<td>Award confirmed, worker execution begins</td>
+<td><code>21a278f64f7fd633</code></td>
+</tr>
+</tbody>
+</table>
+<hr />
+<h2 id="5-submission-package-reproduction-instructions">5. Submission Package &amp; Reproduction Instructions</h2>
+<h3 id="51-exact-submission-components">5.1 Exact Submission Components</h3>
+<ol>
+<li><strong>Report Document:</strong> <code>assignments/assignment_3_1/deliverables/SentryScan_Assignment_3_1_Report.pdf</code></li>
+<li><strong>Repository URL:</strong> <code>https://github.com/drgeekg/SentryScan</code></li>
+<li><strong>Target Branch:</strong> <code>assignment/3.1-multi-agent-coordination</code></li>
+<li><strong>Immutable Git Tag:</strong> <code>assignment-3.1</code></li>
+<li><strong>Packaged ZIP Archive:</strong> <code>dist/SentryScan_assignment_3_1.zip</code></li>
+<li><strong>SHA-256 Checksum:</strong> <code>dist/SentryScan_assignment_3_1.zip.sha256</code></li>
+</ol>
+<h3 id="52-verification-commands">5.2 Verification Commands</h3>
+<pre><code class="language-bash"># Run multi-agent negotiation demonstration
+python demos/demo_assignment_3_1.py
+
+# Execute supervisor graph and negotiation tests
+pytest -v tests/unit/test_supervisor_graph.py tests/unit/test_negotiation.py
+</code></pre>
+</body>
+</html>

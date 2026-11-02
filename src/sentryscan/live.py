@@ -175,6 +175,13 @@ def run_live(
                 "gap": shape.expovariate(1 / 0.10)}
 
     while not stop.is_set():
+        try:
+            from sentryscan.platform import core as _pc
+            if _pc.get_setting(store, LIVE_RUN_ID, "demo_hold", "0") == "1":
+                nap(1.0)  # demo hold: no new simulated activity
+                continue
+        except Exception:
+            pass
         cycle += 1
         try:
             # 1. Quarantine lifecycle: release hosts after quarantine duration

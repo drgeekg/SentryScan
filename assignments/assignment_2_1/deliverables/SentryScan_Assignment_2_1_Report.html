@@ -1,0 +1,309 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>SentryScan: Assignment 2.1 — Concurrency, Fleet Simulation & Data Integrity</title>
+  <style>
+    @page {
+      size: A4;
+      margin: 16mm 14mm 16mm 14mm;
+      @bottom-right {
+        content: counter(page);
+      }
+    }
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+      font-size: 9.5pt;
+      line-height: 1.45;
+      color: #1e293b;
+      margin: 0;
+      padding: 0;
+    }
+    h1 {
+      font-size: 17pt;
+      color: #0f172a;
+      border-bottom: 2px solid #2563eb;
+      padding-bottom: 4px;
+      margin-top: 0;
+      margin-bottom: 8px;
+    }
+    h2 {
+      font-size: 12.5pt;
+      color: #1e40af;
+      border-bottom: 1px solid #cbd5e1;
+      padding-bottom: 3px;
+      margin-top: 18px;
+      margin-bottom: 8px;
+      page-break-after: avoid;
+    }
+    h3 {
+      font-size: 10.5pt;
+      color: #334155;
+      margin-top: 12px;
+      margin-bottom: 4px;
+      page-break-after: avoid;
+    }
+    p, ul, ol {
+      margin-top: 0;
+      margin-bottom: 8px;
+    }
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      margin: 10px 0;
+      font-size: 8.5pt;
+      page-break-inside: avoid;
+    }
+    th, td {
+      border: 1px solid #cbd5e1;
+      padding: 5px 7px;
+      text-align: left;
+      vertical-align: top;
+    }
+    th {
+      background-color: #f1f5f9;
+      font-weight: 600;
+      color: #0f172a;
+    }
+    tr:nth-child(even) {
+      background-color: #f8fafc;
+    }
+    pre, code {
+      font-family: "SFMono-Regular", Consolas, "Liberation Mono", Menlo, monospace;
+      font-size: 8pt;
+      background-color: #f1f5f9;
+      border-radius: 3px;
+    }
+    pre {
+      padding: 7px;
+      border: 1px solid #e2e8f0;
+      overflow-x: auto;
+      page-break-inside: avoid;
+    }
+    code {
+      padding: 1px 3px;
+    }
+    pre code {
+      padding: 0;
+      background: none;
+    }
+    hr {
+      border: none;
+      border-top: 1px solid #e2e8f0;
+      margin: 14px 0;
+    }
+  </style>
+</head>
+<body>
+<h1 id="sentryscan-assignment-21-concurrency-fleet-simulation-data-integrity">SentryScan: Assignment 2.1 — Concurrency, Fleet Simulation &amp; Data Integrity</h1>
+<p><strong>Course:</strong> 21CSE525T — Agent Technology<br />
+<strong>Assignment:</strong> 2.1 — Concurrent Daemon &amp; Data Integrity<br />
+<strong>Student:</strong> R Ganesh [RA2212704010031]<br />
+<strong>Repository:</strong> https://github.com/drgeekg/SentryScan<br />
+<strong>Target Branch:</strong> <code>assignment/2.1-concurrent-daemon</code><br />
+<strong>Git Tag:</strong> <code>assignment-2.1</code><br />
+<strong>Status:</strong> Completed &amp; Verified  </p>
+<hr />
+<h2 id="1-executive-summary-theoretical-context">1. Executive Summary &amp; Theoretical Context</h2>
+<p>Assignment 2.1 advances SentryScan from a static single-threaded reflex scanner to an <strong>asynchronous, concurrent monitoring agent situated in a dynamic environment</strong> (Russell &amp; Norvig, Ch. 2).</p>
+<h3 id="11-concurrency-in-situated-agents">1.1 Concurrency in Situated Agents</h3>
+<p>In dynamic real-world environments, percepts arrive asynchronously while the agent is deliberating. A background thread model decouples sensing from acting:
+- <strong>Producer-Consumer Telemetry Pipeline:</strong> A non-blocking background daemon (<code>MonitorDaemon</code>) continuously polls synthetic endpoints and enqueues telemetry into a thread-safe synchronized buffer (<code>queue.Queue</code>).
+- <strong>Mutual Exclusion &amp; State Integrity:</strong> Multi-threaded telemetry updates risk catastrophic lost updates without synchronization primitives. We formally demonstrate race conditions and verify thread safety via explicit mutex locks.</p>
+<h3 id="12-defensive-integrity-sensing-ground-truth-isolation">1.2 Defensive Integrity Sensing &amp; Ground-Truth Isolation</h3>
+<p>Autonomous agents operating in untrusted environments must detect sensor tampering (poisoning) without access to oracle labels:
+- <strong>Plausibility Checking:</strong> Evaluates temporal freshness, cryptographic duplicate digests, port-banner contradictions, and prompt-injection strings.
+- <strong>Isolated Evaluator Sidecar:</strong> Ground-truth mutation labels are stored exclusively in an isolated sidecar, ensuring agent decisions are strictly unassisted.</p>
+<hr />
+<h2 id="2-architecture-implementation-specification">2. Architecture &amp; Implementation Specification</h2>
+<pre><code>   ┌──────────────────────────────────────────────────────────────┐
+   │            DeviceFleetSimulator (sim-host-001..N)            │
+   │               RFC 5737 Documentation Addresses               │
+   └───────────────┬───────────────────────────────┬──────────────┘
+                   │ Normal Records                │ Poisoning Mutators
+                   ▼                               ▼
+       ┌──────────────────────┐        ┌──────────────────────┐
+       │   Baseline Telemetry │        │  Poisoning Injection │
+       └───────────┬──────────┘        │  (Stale, Contradict) │
+                   │                   └───────────┬──────────┘
+                   │                               │
+                   ▼                               ▼
+       ┌──────────────────────────────────────────────────────┐
+       │          Thread-Safe queue.Queue Telemetry Buffer    │
+       │            (MonitorDaemon Background Thread)         │
+       └───────────────────────────┬──────────────────────────┘
+                                   │
+                                   ▼
+       ┌──────────────────────────────────────────────────────┐
+       │       IntegrityChecker (Plausibility Validation)     │
+       │   Temporal Skew, Duplicate Hashes, Prompt Injections │
+       └───────────────────────────┬──────────────────────────┘
+                                   │
+                                   ▼
+       ┌──────────────────────────────────────────────────────┐
+       │        DetectionEvaluator (Scoring vs Sidecar)       │
+       │       Confusion Matrix: Precision, Recall, F1        │
+       └──────────────────────────────────────────────────────┘
+</code></pre>
+<h3 id="21-lost-updates-race-condition-experiment-srcsentryscanconcurrencystatspy">2.1 Lost Updates Race Condition Experiment (<code>src/sentryscan/concurrency/stats.py</code>)</h3>
+<p>To prove the necessity of concurrency synchronization, 10 concurrent threads each perform 10,000 increments on a shared counter:
+- <strong>Without Mutex Lock:</strong> Substantial race conditions cause <strong>440+ lost updates</strong> (actual count: 99,560 vs expected 100,000).
+- <strong>With Mutex Lock (<code>threading.Lock</code>):</strong> 100% thread safety achieved: exactly <strong>100,000 / 100,000 updates</strong> preserved with zero lost counts.</p>
+<hr />
+<h2 id="3-rubric-compliance-verification-matrix">3. Rubric Compliance &amp; Verification Matrix</h2>
+<table>
+<thead>
+<tr>
+<th>Evaluation Criterion</th>
+<th>Specific Requirement</th>
+<th>Implementation Location</th>
+<th>Evidence Artifact &amp; Verification</th>
+<th style="text-align: center;">Status</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><strong>1. Background Monitor Daemon</strong></td>
+<td>Background thread producing streaming telemetry with non-blocking heartbeat and clean event-driven shutdown</td>
+<td><code>src/sentryscan/concurrency/daemon.py</code> (<code>MonitorDaemon</code>)</td>
+<td><code>tests/unit/test_daemon.py</code><br><code>evidence/run_log.txt#L20-L33</code> (Heartbeats emitted: 5)</td>
+<td style="text-align: center;"><strong>PASSED</strong></td>
+</tr>
+<tr>
+<td><strong>2. Safe Telemetry Queue Buffer</strong></td>
+<td>Thread-safe <code>queue.Queue</code> buffer connecting producers and consumers with enqueue/dequeue latency tracking</td>
+<td><code>src/sentryscan/concurrency/queue_manager.py</code></td>
+<td><code>tests/unit/test_queue.py</code><br><code>evidence/metrics.csv</code> (queue wait times recorded)</td>
+<td style="text-align: center;"><strong>PASSED</strong></td>
+</tr>
+<tr>
+<td><strong>3. Lost Updates Synchronization Proof</strong></td>
+<td>Concrete experiment proving race condition and lost updates without mutex lock vs. 100% accuracy with lock</td>
+<td><code>src/sentryscan/concurrency/stats.py</code> (<code>demonstrate_lost_updates</code>)</td>
+<td><code>tests/unit/test_concurrency.py</code><br><code>evidence/run_log.txt#L7-L12</code> (Lost: 440+ updates without lock vs 0 lost with lock)</td>
+<td style="text-align: center;"><strong>PASSED</strong></td>
+</tr>
+<tr>
+<td><strong>4. Simulated Device Fleet Model</strong></td>
+<td>Configurable endpoint fleet (<code>sim-host-001</code> … <code>sim-host-N</code>) across RFC 5737 documentation address space</td>
+<td><code>src/sentryscan/simulation/fleet.py</code> (<code>DeviceFleetSimulator</code>)</td>
+<td><code>tests/unit/test_fleet.py</code><br><code>evidence/run_log.txt#L14-L20</code> (5 devices initialized)</td>
+<td style="text-align: center;"><strong>PASSED</strong></td>
+</tr>
+<tr>
+<td><strong>5. Controlled Poisoning Mutators</strong></td>
+<td>Injection operators for stale timestamps, service/banner mismatches, TLS contradictions, prompt injections, and replays</td>
+<td><code>src/sentryscan/simulation/poisoning.py</code> (<code>PoisoningMutator</code>)</td>
+<td><code>tests/unit/test_poisoning.py</code><br><code>evidence/detection_report.json</code></td>
+<td style="text-align: center;"><strong>PASSED</strong></td>
+</tr>
+<tr>
+<td><strong>6. Ground-Truth Isolation</strong></td>
+<td>Mutation answer-key labels recorded exclusively in an evaluator sidecar, completely hidden from agent perception</td>
+<td><code>src/sentryscan/simulation/poisoning.py</code> (<code>GroundTruthSidecar</code>)</td>
+<td><code>tests/unit/test_poisoning.py</code><br><code>evidence/detection_report.json</code></td>
+<td style="text-align: center;"><strong>PASSED</strong></td>
+</tr>
+<tr>
+<td><strong>7. Deterministic Data-Level Integrity Checker</strong></td>
+<td>Plausibility checker detecting stale timestamps, duplicate records, contradictions, and prompt injections without ground truth</td>
+<td><code>src/sentryscan/integrity/checker.py</code> (<code>IntegrityChecker</code>)</td>
+<td><code>tests/unit/test_integrity.py</code><br><code>evidence/run_log.txt#L40</code> (4 suspect records detected)</td>
+<td style="text-align: center;"><strong>PASSED</strong></td>
+</tr>
+<tr>
+<td><strong>8. Detection Evaluation Metrics</strong></td>
+<td>Evaluator scoring integrity flags against ground truth: confusion matrix, precision (100%), recall (80%), F1 score (88.9%)</td>
+<td><code>src/sentryscan/integrity/evaluator.py</code> (<code>DetectionEvaluator</code>)</td>
+<td><code>tests/unit/test_evaluator.py</code><br><code>evidence/detection_report.json</code><br><code>evidence/run_log.txt#L44-L52</code></td>
+<td style="text-align: center;"><strong>PASSED</strong></td>
+</tr>
+<tr>
+<td><strong>9. Queue Latency Percentiles (p50/p95)</strong></td>
+<td>Tracking queue residence and turnaround times, calculating p50/p95 percentiles, and exporting to CSV</td>
+<td><code>src/sentryscan/concurrency/metrics.py</code> (<code>LatencyTracker</code>)</td>
+<td><code>tests/unit/test_metrics.py</code><br><code>evidence/metrics.csv</code><br><code>evidence/run_log.txt#L54-L60</code></td>
+<td style="text-align: center;"><strong>PASSED</strong></td>
+</tr>
+<tr>
+<td><strong>10. Packaging &amp; Git Release Integrity</strong></td>
+<td>Dedicated branch, atomic commits, non-fast-forward merge commit, immutable tag, and verified archive packaging</td>
+<td>Monorepo root and git history</td>
+<td>Git Tag: <code>assignment-2.1</code><br>Archive: <code>dist/SentryScan_assignment_2_1.zip</code></td>
+<td style="text-align: center;"><strong>PASSED</strong></td>
+</tr>
+</tbody>
+</table>
+<hr />
+<h2 id="4-execution-results-empirical-evidence">4. Execution Results &amp; Empirical Evidence</h2>
+<h3 id="41-poisoning-detection-evaluation-matrix-evidencedetection_reportjson">4.1 Poisoning Detection Evaluation Matrix (<code>evidence/detection_report.json</code>)</h3>
+<table>
+<thead>
+<tr>
+<th>Metric</th>
+<th>Measured Value</th>
+<th>Theoretical Significance</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><strong>True Positives (TP)</strong></td>
+<td>4</td>
+<td>Tampered records correctly identified by plausibility rules</td>
+</tr>
+<tr>
+<td><strong>False Positives (FP)</strong></td>
+<td>0</td>
+<td>Zero benign telemetry flagged; <strong>Precision = 100.0%</strong></td>
+</tr>
+<tr>
+<td><strong>False Negatives (FN)</strong></td>
+<td>1</td>
+<td>Subtle subtle jitter mutation below detection threshold</td>
+</tr>
+<tr>
+<td><strong>True Negatives (TN)</strong></td>
+<td>15</td>
+<td>Legitimate baseline telemetry accepted cleanly</td>
+</tr>
+<tr>
+<td><strong>Recall</strong></td>
+<td><strong>80.0%</strong></td>
+<td>Comprehensive coverage across diverse mutation operators</td>
+</tr>
+<tr>
+<td><strong>F1 Score</strong></td>
+<td><strong>88.9%</strong></td>
+<td>Harmonic mean reflecting high reliability under poisoning</td>
+</tr>
+</tbody>
+</table>
+<h3 id="42-latency-percentiles-evidencemetricscsv">4.2 Latency Percentiles (<code>evidence/metrics.csv</code>)</h3>
+<ul>
+<li><strong>Median Queue Wait Time (p50):</strong> <code>0.42 ms</code></li>
+<li><strong>95th Percentile Latency (p95):</strong> <code>1.85 ms</code></li>
+<li><strong>Max Queue Turnaround:</strong> <code>3.10 ms</code> (bounded thread execution, zero queue starvation)</li>
+</ul>
+<hr />
+<h2 id="5-submission-package-reproduction-instructions">5. Submission Package &amp; Reproduction Instructions</h2>
+<h3 id="51-exact-submission-components">5.1 Exact Submission Components</h3>
+<ol>
+<li><strong>Report Document:</strong> <code>assignments/assignment_2_1/deliverables/SentryScan_Assignment_2_1_Report.pdf</code></li>
+<li><strong>Repository URL:</strong> <code>https://github.com/drgeekg/SentryScan</code></li>
+<li><strong>Target Branch:</strong> <code>assignment/2.1-concurrent-daemon</code></li>
+<li><strong>Immutable Git Tag:</strong> <code>assignment-2.1</code></li>
+<li><strong>Packaged ZIP Archive:</strong> <code>dist/SentryScan_assignment_2_1.zip</code></li>
+<li><strong>SHA-256 Checksum:</strong> <code>dist/SentryScan_assignment_2_1.zip.sha256</code></li>
+</ol>
+<h3 id="52-verification-commands">5.2 Verification Commands</h3>
+<pre><code class="language-bash"># Run concurrent fleet demonstration
+python demos/demo_assignment_2_1.py
+
+# Execute concurrency and integrity tests
+pytest -v tests/unit/test_daemon.py tests/unit/test_concurrency.py tests/unit/test_integrity.py
+
+# Package submission archive
+python scripts/package_assignment.py assignment-2.1
+</code></pre>
+</body>
+</html>

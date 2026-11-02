@@ -1,0 +1,316 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>SentryScan: Assignment 4.2 — Knowledge Representation & API Enrichment</title>
+  <style>
+    @page {
+      size: A4;
+      margin: 16mm 14mm 16mm 14mm;
+      @bottom-right {
+        content: counter(page);
+      }
+    }
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+      font-size: 9.5pt;
+      line-height: 1.45;
+      color: #1e293b;
+      margin: 0;
+      padding: 0;
+    }
+    h1 {
+      font-size: 17pt;
+      color: #0f172a;
+      border-bottom: 2px solid #2563eb;
+      padding-bottom: 4px;
+      margin-top: 0;
+      margin-bottom: 8px;
+    }
+    h2 {
+      font-size: 12.5pt;
+      color: #1e40af;
+      border-bottom: 1px solid #cbd5e1;
+      padding-bottom: 3px;
+      margin-top: 18px;
+      margin-bottom: 8px;
+      page-break-after: avoid;
+    }
+    h3 {
+      font-size: 10.5pt;
+      color: #334155;
+      margin-top: 12px;
+      margin-bottom: 4px;
+      page-break-after: avoid;
+    }
+    p, ul, ol {
+      margin-top: 0;
+      margin-bottom: 8px;
+    }
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      margin: 10px 0;
+      font-size: 8.5pt;
+      page-break-inside: avoid;
+    }
+    th, td {
+      border: 1px solid #cbd5e1;
+      padding: 5px 7px;
+      text-align: left;
+      vertical-align: top;
+    }
+    th {
+      background-color: #f1f5f9;
+      font-weight: 600;
+      color: #0f172a;
+    }
+    tr:nth-child(even) {
+      background-color: #f8fafc;
+    }
+    pre, code {
+      font-family: "SFMono-Regular", Consolas, "Liberation Mono", Menlo, monospace;
+      font-size: 8pt;
+      background-color: #f1f5f9;
+      border-radius: 3px;
+    }
+    pre {
+      padding: 7px;
+      border: 1px solid #e2e8f0;
+      overflow-x: auto;
+      page-break-inside: avoid;
+    }
+    code {
+      padding: 1px 3px;
+    }
+    pre code {
+      padding: 0;
+      background: none;
+    }
+    hr {
+      border: none;
+      border-top: 1px solid #e2e8f0;
+      margin: 14px 0;
+    }
+  </style>
+</head>
+<body>
+<h1 id="sentryscan-assignment-42-knowledge-representation-api-enrichment">SentryScan: Assignment 4.2 — Knowledge Representation &amp; API Enrichment</h1>
+<p><strong>Course:</strong> 21CSE525T — Agent Technology<br />
+<strong>Assignment:</strong> 4.2 — Knowledge Representation &amp; API Enrichment<br />
+<strong>Student:</strong> R Ganesh [RA2212704010031]<br />
+<strong>Repository:</strong> https://github.com/drgeekg/SentryScan<br />
+<strong>Target Branch:</strong> <code>assignment/4.2-knowledge-enrichment</code><br />
+<strong>Git Tag:</strong> <code>assignment-4.2</code><br />
+<strong>Status:</strong> Completed &amp; Verified  </p>
+<hr />
+<h2 id="1-executive-summary-theoretical-context">1. Executive Summary &amp; Theoretical Context</h2>
+<p>Assignment 4.2 integrates formal <strong>Knowledge Representation &amp; External API Enrichment</strong> (Russell &amp; Norvig, Ch. 12) into SentryScan, allowing the agent to augment sparse perceptual banners with authoritative external cybersecurity knowledge.</p>
+<h3 id="11-ontology-driven-epistemic-grounding">1.1 Ontology-Driven Epistemic Grounding</h3>
+<p>Raw telemetry provides only ambiguous version strings (e.g., <code>ProFTPD 1.3.5</code>, <code>log4j 2.14.1</code>). Grounding this percept in a formal <strong>Vulnerability Knowledge Ontology</strong> maps the surface observation to:
+- Canonical <strong>CVE Identifiers</strong> (<code>CVE-2021-44228</code>, <code>CVE-2024-3094</code>).
+- <strong>Common Weakness Enumeration (CWE)</strong> taxonomies (CWE-502 Deserialization, CWE-78 OS Command Injection).
+- Mathematical <strong>CVSS v3.1 Base Scores</strong> and authoritative mitigation strategies.</p>
+<h3 id="12-multi-tiered-enrichment-resilient-fallbacks">1.2 Multi-Tiered Enrichment &amp; Resilient Fallbacks</h3>
+<p>Network endpoints fail, rates throttle, and air-gapped environments forbid external calls. SentryScan implements a 4-tier resilient knowledge pipeline:
+1. <strong>In-Memory / SQLite Persistent Cache:</strong> Fast sub-millisecond retrieval with TTL invalidation.
+2. <strong>NVD REST API Adapter:</strong> Read-only client querying NIST's National Vulnerability Database with bounded exponential backoff retries.
+3. <strong>Local Knowledge Ontology:</strong> Curated JSON ontology fixture for known high-impact exploit signatures.
+4. <strong>Deterministic Fallback Fixture:</strong> Guarantees 100% operational uptime without agent crash during complete network outages.</p>
+<hr />
+<h2 id="2-architecture-implementation-specification">2. Architecture &amp; Implementation Specification</h2>
+<pre><code>                  Raw Finding (e.g. sim-host-007: Log4j 2.14.1)
+                                        │
+                                        ▼
+                         ┌─────────────────────────────┐
+                         │    VulnerabilityCache       │
+                         └──────────────┬──────────────┘
+                         Hit            │  Miss
+           ┌────────────────────────────┘              │
+           ▼                                           ▼
+ ┌───────────────────┐                   ┌─────────────────────────────┐
+ │ Return Cached CVE │                   │ NVDAdapter (REST Client)    │
+ │ (0 Network Calls) │                   └──────────────┬──────────────┘
+ └─────────┬─────────┘                   Success        │  Timeout / Fail
+           │                       ┌────────────────────┘              │
+           │                       ▼                                   ▼
+           │             ┌───────────────────┐           ┌───────────────────┐
+           │             │ NIST NVD API V2   │           │ Local Offline     │
+           │             │ Structured CVSS   │           │ Fallback Fixture  │
+           │             └─────────┬─────────┘           └─────────┬─────────┘
+           │                       │                               │
+           ▼                       ▼                               ▼
+ ┌───────────────────────────────────────────────────────────────────────────┐
+ │                   Contextual Severity Escalation Engine                   │
+ │                Original: MEDIUM  ---&gt;  Enriched: CRITICAL                 │
+ └─────────────────────────────────────┬─────────────────────────────────────┘
+                                       │
+                                       ▼
+ ┌───────────────────────────────────────────────────────────────────────────┐
+ │        Material Belief Update -&gt; Triggers LangGraph BDI Preemption        │
+ │              Autonomous Quarantine &amp; 50ms Cadence Enforcement             │
+ └───────────────────────────────────────────────────────────────────────────┘
+</code></pre>
+<hr />
+<h2 id="3-rubric-compliance-verification-matrix">3. Rubric Compliance &amp; Verification Matrix</h2>
+<table>
+<thead>
+<tr>
+<th>Evaluation Criterion</th>
+<th>Implementation Component</th>
+<th>Evidence Artifact</th>
+<th style="text-align: center;">Status</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><strong>1. Structured Vulnerability Knowledge Ontology</strong></td>
+<td><code>src/sentryscan/knowledge/models.py</code>, <code>src/sentryscan/knowledge/ontology.py</code>: <code>VulnerabilityRecord</code>, <code>VulnerabilityKnowledgeBase</code>, and <code>fixtures/knowledge/vulnerability_ontology.json</code></td>
+<td><code>tests/unit/test_knowledge_ontology.py</code><br><code>evidence/knowledge_adaptation_log.md</code></td>
+<td style="text-align: center;"><strong>PASSED</strong></td>
+</tr>
+<tr>
+<td><strong>2. Read-Only NVD CVE API Adapter</strong></td>
+<td><code>src/sentryscan/knowledge/nvd_adapter.py</code>: <code>NVDAdapter</code>, strict Pydantic response models (<code>NVDResponse</code>, <code>NVDCveData</code>), CVSS mapping</td>
+<td><code>tests/unit/test_nvd_adapter.py</code><br><code>demos/demo_assignment_4_2.py</code> Cycle 3</td>
+<td style="text-align: center;"><strong>PASSED</strong></td>
+</tr>
+<tr>
+<td><strong>3. Persistent &amp; In-Memory Caching</strong></td>
+<td><code>src/sentryscan/knowledge/cache.py</code>: <code>VulnerabilityCache</code> with TTL expiration, disk persistence, and hit/miss tracking</td>
+<td><code>tests/unit/test_knowledge_cache.py</code><br><code>demos/demo_assignment_4_2.py</code> Cycle 4</td>
+<td style="text-align: center;"><strong>PASSED</strong></td>
+</tr>
+<tr>
+<td><strong>4. Bounded Retry &amp; Backoff</strong></td>
+<td><code>src/sentryscan/knowledge/enricher.py</code>: <code>_fetch_with_retry()</code> executing exponential backoff across configurable retries</td>
+<td><code>tests/unit/test_knowledge_cache.py</code> (<code>test_enricher_retry_and_fallback_on_nvd_failure</code>)</td>
+<td style="text-align: center;"><strong>PASSED</strong></td>
+</tr>
+<tr>
+<td><strong>5. Resilient Offline Fallback</strong></td>
+<td><code>src/sentryscan/knowledge/enricher.py</code>: Seamless fallback to local fixtures when network/NVD is disabled or unavailable</td>
+<td><code>tests/unit/test_knowledge_cache.py</code><br><code>demos/demo_assignment_4_2.py</code> Cycle 2 &amp; 5</td>
+<td style="text-align: center;"><strong>PASSED</strong></td>
+</tr>
+<tr>
+<td><strong>6. Contextual Severity Escalation</strong></td>
+<td><code>src/sentryscan/knowledge/enricher.py</code>: <code>EnrichmentResult</code> calculating severity escalation ($Sev_{enriched} &gt; Sev_{orig}$) from CVSS scores</td>
+<td><code>evidence/knowledge_adaptation_log.md</code><br><code>tests/unit/test_knowledge_ontology.py</code></td>
+<td style="text-align: center;"><strong>PASSED</strong></td>
+</tr>
+<tr>
+<td><strong>7. Deliberative Belief &amp; Intention Reconsideration</strong></td>
+<td><code>src/sentryscan/agents/analyst.py</code>: Feeds escalated finding into <code>BeliefBase</code>, triggering LangGraph BDI replanning to <code>CONTAIN_COMPROMISED_HOSTS</code></td>
+<td><code>tests/integration/test_knowledge_enrichment.py</code><br><code>evidence/run_log.txt</code> Cycle 2</td>
+<td style="text-align: center;"><strong>PASSED</strong></td>
+</tr>
+<tr>
+<td><strong>8. Autonomous Quarantine Execution</strong></td>
+<td><code>src/sentryscan/agents/analyst.py</code>: Emits <code>PARAMS_UPDATE</code> with <code>quarantine_flag=True</code>, <code>scan_interval_ms=50</code>, and CVE metadata</td>
+<td><code>tests/integration/test_knowledge_enrichment.py</code><br><code>demos/demo_assignment_4_2.py</code> Cycle 2 &amp; 3</td>
+<td style="text-align: center;"><strong>PASSED</strong></td>
+</tr>
+<tr>
+<td><strong>9. Trace &amp; Single-Writer Auditing</strong></td>
+<td><code>src/sentryscan/observability/recorder.py</code>: Single-writer monotonic <code>seq</code> logging of message receipts, perception, and adaptations</td>
+<td><code>evidence/trace_excerpt.jsonl</code></td>
+<td style="text-align: center;"><strong>PASSED</strong></td>
+</tr>
+</tbody>
+</table>
+<hr />
+<h2 id="4-execution-results-empirical-evidence">4. Execution Results &amp; Empirical Evidence</h2>
+<h3 id="41-multi-tiered-enrichment-adaptation-log-evidenceknowledge_adaptation_logmd">4.1 Multi-Tiered Enrichment &amp; Adaptation Log (<code>evidence/knowledge_adaptation_log.md</code>)</h3>
+<table>
+<thead>
+<tr>
+<th>Cycle</th>
+<th>Target Host</th>
+<th>Original Sev</th>
+<th>Matched CVE</th>
+<th>CVSS</th>
+<th>Enriched Sev</th>
+<th>Source</th>
+<th>Generated Action</th>
+<th style="text-align: center;">Quarantined</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><strong>1</strong></td>
+<td><code>192.0.2.10</code></td>
+<td><code>INFO</code></td>
+<td><code>N/A</code></td>
+<td>N/A</td>
+<td><code>INFO</code></td>
+<td><code>LOCAL_ONTOLOGY</code></td>
+<td><code>NOMINAL (500ms)</code></td>
+<td style="text-align: center;"><code>False</code></td>
+</tr>
+<tr>
+<td><strong>2</strong></td>
+<td><code>sim-host-007</code></td>
+<td><code>MEDIUM</code></td>
+<td><code>CVE-2021-44228</code> (Log4j)</td>
+<td><strong>10.0</strong></td>
+<td><strong><code>CRITICAL</code></strong></td>
+<td><code>FALLBACK_FIXTURE</code></td>
+<td><code>DEEP_INSPECT (50ms)</code></td>
+<td style="text-align: center;"><strong><code>True</code></strong></td>
+</tr>
+<tr>
+<td><strong>3</strong></td>
+<td><code>sim-host-008</code></td>
+<td><code>LOW</code></td>
+<td><code>CVE-2024-3094</code> (XZ)</td>
+<td><strong>10.0</strong></td>
+<td><strong><code>CRITICAL</code></strong></td>
+<td><code>NVD_API</code></td>
+<td><code>DEEP_INSPECT (50ms)</code></td>
+<td style="text-align: center;"><strong><code>True</code></strong></td>
+</tr>
+<tr>
+<td><strong>4</strong></td>
+<td><code>sim-host-009</code></td>
+<td><code>LOW</code></td>
+<td><code>CVE-2024-3094</code> (XZ)</td>
+<td><strong>10.0</strong></td>
+<td><strong><code>CRITICAL</code></strong></td>
+<td><code>CACHE (0 net calls)</code></td>
+<td><code>DEEP_INSPECT (50ms)</code></td>
+<td style="text-align: center;"><strong><code>True</code></strong></td>
+</tr>
+<tr>
+<td><strong>5</strong></td>
+<td><code>sim-host-011</code></td>
+<td><code>LOW</code></td>
+<td><code>CVE-2021-41773</code> (Apache)</td>
+<td><strong>7.5</strong></td>
+<td><strong><code>HIGH</code></strong></td>
+<td><code>FALLBACK_FIXTURE</code></td>
+<td><code>DEEP_INSPECT (100ms)</code></td>
+<td style="text-align: center;"><code>False</code></td>
+</tr>
+</tbody>
+</table>
+<hr />
+<h2 id="5-submission-package-reproduction-instructions">5. Submission Package &amp; Reproduction Instructions</h2>
+<h3 id="51-exact-submission-components">5.1 Exact Submission Components</h3>
+<ol>
+<li><strong>Report Document:</strong> <code>assignments/assignment_4_2/deliverables/SentryScan_Assignment_4_2_Report.pdf</code></li>
+<li><strong>Repository URL:</strong> <code>https://github.com/drgeekg/SentryScan</code></li>
+<li><strong>Target Branch:</strong> <code>assignment/4.2-knowledge-enrichment</code></li>
+<li><strong>Immutable Git Tag:</strong> <code>assignment-4.2</code></li>
+<li><strong>Packaged ZIP Archive:</strong> <code>dist/SentryScan_assignment_4_2.zip</code></li>
+<li><strong>SHA-256 Checksum:</strong> <code>dist/SentryScan_assignment_4_2.zip.sha256</code></li>
+</ol>
+<h3 id="52-verification-commands">5.2 Verification Commands</h3>
+<pre><code class="language-bash"># Run knowledge enrichment demonstration
+python demos/demo_assignment_4_2.py
+
+# Execute knowledge ontology, NVD adapter, and cache tests
+pytest -v tests/unit/test_knowledge_ontology.py tests/unit/test_nvd_adapter.py tests/unit/test_knowledge_cache.py
+</code></pre>
+</body>
+</html>

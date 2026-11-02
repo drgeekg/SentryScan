@@ -1,0 +1,192 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>SentryScan · Demo Control Center</title>
+<style>
+:root{--bg:#070a09;--card:#0e1512;--line:#1d2a24;--tx:#d9e6df;--mut:#7f948a;--ok:#5dff9d;--bad:#ff5d6c;--warn:#ffc857;--blue:#4da3ff}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--tx);font:14px/1.45 ui-monospace,Consolas,monospace}
+header{display:flex;gap:12px;align-items:center;padding:14px 22px;border-bottom:1px solid var(--line);flex-wrap:wrap}
+header h1{font-size:16px;margin:0;margin-right:auto}
+h2{font-size:12px;letter-spacing:.08em;text-transform:uppercase;color:var(--mut);margin:0 0 10px}
+main{padding:20px 22px;display:grid;gap:16px;max-width:1300px;margin:0 auto}
+.card{background:var(--card);border:1px solid var(--line);border-radius:8px;padding:16px}
+.top{display:grid;grid-template-columns:260px 1fr;gap:16px}
+.gauge{display:flex;flex-direction:column;align-items:center;justify-content:center}
+.ring{width:170px;height:170px;border-radius:50%;display:grid;place-items:center;transition:background .6s}
+.ring>div{width:134px;height:134px;border-radius:50%;background:var(--card);display:grid;place-items:center;font-size:38px;font-weight:700}
+.kpis{display:grid;grid-template-columns:repeat(4,1fr);gap:12px}
+.kpi b{display:block;font-size:28px}
+.kpi span{color:var(--mut);font-size:12px}
+.row{display:flex;gap:10px;flex-wrap:wrap;align-items:center}
+button,select{background:#14201b;color:var(--tx);border:1px solid var(--line);border-radius:6px;padding:8px 12px;font:inherit;cursor:pointer}
+button:hover{border-color:var(--ok)}
+button:disabled{opacity:.5;cursor:wait}
+button.p{background:var(--ok);color:#04130a;border-color:var(--ok);font-weight:700}
+button.d{border-color:var(--bad);color:var(--bad)}
+table{width:100%;border-collapse:collapse}
+th,td{text-align:left;padding:8px 10px;border-bottom:1px solid var(--line);vertical-align:top}
+th{color:var(--mut);font-size:11px;text-transform:uppercase}
+.pill{padding:2px 8px;border-radius:4px;font-size:12px;border:1px solid}
+.PASS{color:var(--ok);border-color:var(--ok)}.FAIL{color:var(--bad);border-color:var(--bad)}
+.UNKNOWN,.EVIDENCE_REQUIRED{color:var(--warn);border-color:var(--warn)}
+.mut{color:var(--mut)}
+#toast{position:fixed;right:20px;bottom:20px;background:var(--ok);color:#04130a;padding:10px 16px;border-radius:6px;display:none;font-weight:700}
+svg{width:100%;height:60px}
+.badge{padding:3px 9px;border-radius:4px;font-size:12px;border:1px solid var(--line)}
+@media(max-width:800px){.top{grid-template-columns:1fr}.kpis{grid-template-columns:repeat(2,1fr)}}
+</style>
+</head>
+<body>
+<header>
+  <h1>SentryScan · Demo Control Center</h1>
+  <label class="mut">RUN <select id="run"></select></label>
+  <span id="hold" class="badge">LIVE</span>
+  <span class="badge mut">Remediation is simulated</span>
+  <a href="/#/polaris" style="color:var(--blue)">POLARIS ↗</a>
+  <a href="/#/" style="color:var(--blue)">Dashboard ↗</a>
+</header>
+<main>
+  <section class="top">
+    <div class="card gauge">
+      <h2>Compliance score</h2>
+      <div class="ring" id="ring"><div id="score">--</div></div>
+      <div class="mut" id="delta" style="margin-top:8px">&nbsp;</div>
+    </div>
+    <div class="card">
+      <div class="kpis">
+        <div class="kpi"><b id="kPass" style="color:var(--ok)">-</b><span>Controls passing</span></div>
+        <div class="kpi"><b id="kFail" style="color:var(--bad)">-</b><span>Controls failing</span></div>
+        <div class="kpi"><b id="kUnk" style="color:var(--warn)">-</b><span>Unknown / need evidence</span></div>
+        <div class="kpi"><b id="kTask">-</b><span>Open remediation tasks</span></div>
+      </div>
+      <h2 style="margin-top:16px">Score history</h2>
+      <svg id="spark" viewBox="0 0 300 60" preserveAspectRatio="none"></svg>
+    </div>
+  </section>
+
+  <section class="card">
+    <h2>Demo actions</h2>
+    <div class="row">
+      <button class="p" id="bAll">Remediate ALL</button>
+      <select id="preset">
+        <option value="telnet_leak">Telnet exposure</option>
+        <option value="default_creds">Default credentials</option>
+        <option value="apache_cve">Apache CVE</option>
+        <option value="deprecated_tls">Deprecated TLS</option>
+      </select>
+      <button class="d" id="bBreach">Inject breach</button>
+      <button id="bScan">Rescan SENTRA</button>
+      <button id="bHold">Hold live sim</button>
+      <button id="bReset">Reset demo</button>
+      <select id="fw">
+        <option value="baseline">Baseline-8</option>
+        <option value="iso27001">ISO/IEC 27001</option>
+        <option value="nistcsf">NIST CSF 2.0</option>
+      </select>
+    </div>
+  </section>
+
+  <section class="card">
+    <h2>Controls</h2>
+    <table>
+      <thead><tr><th>ID</th><th>Requirement</th><th>Ref</th><th>Status</th><th>Reason</th><th>Fresh</th><th>Hosts</th><th></th></tr></thead>
+      <tbody id="ctl"></tbody>
+    </table>
+  </section>
+
+  <section class="card">
+    <h2>Host containment</h2>
+    <div class="row">
+      <select id="host"></select>
+      <button id="bQ" class="d">Quarantine</button>
+      <button id="bR">Release</button>
+    </div>
+  </section>
+</main>
+<div id="toast"></div>
+<script>
+const $ = id => document.getElementById(id);
+let run = null, last = null, busy = false;
+const api = (path, method = 'GET', body) => fetch(path, {
+  method, headers: {'Content-Type': 'application/json'}, body: body ? JSON.stringify(body) : undefined
+}).then(r => { if (!r.ok) throw new Error(path + ' ' + r.status); return r.json(); });
+const toast = m => { const t = $('toast'); t.textContent = m; t.style.display = 'block'; setTimeout(() => t.style.display = 'none', 2600); };
+const esc = s => String(s ?? '').replace(/[&<>"]/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+
+function render(p) {
+  const c = p.controls || [], n = s => c.filter(x => x.status === s).length;
+  const score = p.score ?? 0;
+  const col = score >= 80 ? 'var(--ok)' : score >= 50 ? 'var(--warn)' : 'var(--bad)';
+  $('ring').style.background = `conic-gradient(${col} ${score * 3.6}deg, #1d2a24 0)`;
+  $('score').textContent = score + '%'; $('score').style.color = col;
+  if (last !== null && last !== score) $('delta').textContent = `${score > last ? '▲' : '▼'} from ${last}%`;
+  last = score;
+  $('kPass').textContent = n('PASS'); $('kFail').textContent = n('FAIL');
+  $('kUnk').textContent = n('UNKNOWN') + n('EVIDENCE_REQUIRED');
+  $('kTask').textContent = (p.tasks || []).filter(t => t.status !== 'DONE').length;
+  $('fw').value = p.framework || 'baseline';
+  $('ctl').innerHTML = c.map(x => `<tr>
+    <td><b>${esc(x.id)}</b></td><td>${esc(x.name)}<div class="mut">${esc(x.category)}</div></td>
+    <td>${esc(x.framework_ref)}</td><td><span class="pill ${x.status}">${x.status}</span></td>
+    <td class="mut">${esc(x.reason)}</td><td>${x.freshness_pct ?? 0}%</td>
+    <td>${x.affected_hosts.length ? esc(x.affected_hosts.slice(0,3).join(', ')) + (x.affected_hosts.length > 3 ? ' +' + (x.affected_hosts.length - 3) : '') : '<span class="mut">fleet-wide</span>'}</td>
+    <td>${x.status === 'FAIL' ? `<button data-fix="${esc(x.id)}">Remediate</button>` : ''}</td></tr>`).join('');
+  const h = (p.history || []).map(x => x.score);
+  if (h.length > 1) {
+    const pts = h.map((v, i) => `${(i / (h.length - 1)) * 300},${58 - v * 0.56}`).join(' ');
+    $('spark').innerHTML = `<polyline fill="none" stroke="var(--ok)" stroke-width="2" points="${pts}"/>`;
+  }
+}
+
+async function refresh() {
+  if (!run || busy) return;
+  try {
+    const [p, s] = await Promise.all([api(`/api/runs/${run}/pulse`), api(`/api/runs/${run}/demo/state`)]);
+    render(p);
+    $('hold').textContent = s.hold ? 'HELD' : 'LIVE';
+    $('hold').style.color = s.hold ? 'var(--warn)' : 'var(--ok)';
+    $('bHold').textContent = s.hold ? 'Resume live sim' : 'Hold live sim';
+    $('bHold').dataset.hold = s.hold ? '1' : '0';
+  } catch (e) { console.warn(e); }
+}
+
+async function act(btn, fn, msg) {
+  busy = true; btn.disabled = true;
+  try { const r = await fn(); if (r && r.controls) render(r); toast(msg(r)); }
+  catch (e) { toast('Error: ' + e.message); }
+  finally { busy = false; btn.disabled = false; refresh(); }
+}
+
+$('bAll').onclick = e => act(e.target, () => api(`/api/runs/${run}/pulse/remediate-all`, 'POST'), r => `Compliance ${r.before}% → ${r.after}%`);
+$('bBreach').onclick = e => act(e.target, () => api(`/api/runs/${run}/demo/breach`, 'POST', {preset: $('preset').value}), () => 'Breach injected');
+$('bScan').onclick = e => act(e.target, () => api(`/api/runs/${run}/radar/scan`, 'POST').then(() => api(`/api/runs/${run}/pulse`)), () => 'SENTRA rescan complete');
+$('bReset').onclick = e => act(e.target, () => api(`/api/runs/${run}/demo/reset`, 'POST'), () => 'Demo reset');
+$('bHold').onclick = e => act(e.target, () => api(`/api/runs/${run}/demo/hold`, 'POST', {hold: e.target.dataset.hold !== '1'}), r => r.hold ? 'Live simulation held' : 'Live simulation resumed');
+$('fw').onchange = e => act(e.target, () => api(`/api/runs/${run}/pulse/settings`, 'POST', {framework: e.target.value}), () => 'Framework applied');
+$('ctl').onclick = e => { const id = e.target.dataset.fix; if (id) act(e.target, () => api(`/api/runs/${run}/pulse/controls/${id}/remediate`, 'POST'), () => id + ' remediated'); };
+$('bQ').onclick = e => act(e.target, () => api(`/api/runs/${run}/hosts/${$('host').value}/quarantine`, 'POST', {action: 'isolate'}), () => 'Host quarantined');
+$('bR').onclick = e => act(e.target, () => api(`/api/runs/${run}/hosts/${$('host').value}/quarantine`, 'POST', {action: 'release'}), () => 'Host released');
+$('run').onchange = () => { run = $('run').value; last = null; loadHosts(); refresh(); };
+
+async function loadHosts() {
+  try {
+    const a = await api(`/api/runs/${run}/assets`);
+    $('host').innerHTML = a.map(x => `<option value="${esc(x.host_id)}">${esc(x.host_id)} (${x.status})</option>`).join('');
+  } catch (e) {}
+}
+
+(async () => {
+  const runs = await api('/api/runs');
+  const ids = runs.map(r => r.run_id || r.id);
+  $('run').innerHTML = ids.map(i => `<option>${esc(i)}</option>`).join('');
+  run = ids.includes('run-live') ? 'run-live' : ids[0];
+  $('run').value = run;
+  await loadHosts(); await refresh();
+  setInterval(refresh, 2000);
+})();
+</script>
+</body>
+</html>

@@ -1,0 +1,324 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>SentryScan: Assignment 1.2 — Deterministic Rule-Based Reflex Reasoner</title>
+  <style>
+    @page {
+      size: A4;
+      margin: 16mm 14mm 16mm 14mm;
+      @bottom-right {
+        content: counter(page);
+      }
+    }
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+      font-size: 9.5pt;
+      line-height: 1.45;
+      color: #1e293b;
+      margin: 0;
+      padding: 0;
+    }
+    h1 {
+      font-size: 17pt;
+      color: #0f172a;
+      border-bottom: 2px solid #2563eb;
+      padding-bottom: 4px;
+      margin-top: 0;
+      margin-bottom: 8px;
+    }
+    h2 {
+      font-size: 12.5pt;
+      color: #1e40af;
+      border-bottom: 1px solid #cbd5e1;
+      padding-bottom: 3px;
+      margin-top: 18px;
+      margin-bottom: 8px;
+      page-break-after: avoid;
+    }
+    h3 {
+      font-size: 10.5pt;
+      color: #334155;
+      margin-top: 12px;
+      margin-bottom: 4px;
+      page-break-after: avoid;
+    }
+    p, ul, ol {
+      margin-top: 0;
+      margin-bottom: 8px;
+    }
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      margin: 10px 0;
+      font-size: 8.5pt;
+      page-break-inside: avoid;
+    }
+    th, td {
+      border: 1px solid #cbd5e1;
+      padding: 5px 7px;
+      text-align: left;
+      vertical-align: top;
+    }
+    th {
+      background-color: #f1f5f9;
+      font-weight: 600;
+      color: #0f172a;
+    }
+    tr:nth-child(even) {
+      background-color: #f8fafc;
+    }
+    pre, code {
+      font-family: "SFMono-Regular", Consolas, "Liberation Mono", Menlo, monospace;
+      font-size: 8pt;
+      background-color: #f1f5f9;
+      border-radius: 3px;
+    }
+    pre {
+      padding: 7px;
+      border: 1px solid #e2e8f0;
+      overflow-x: auto;
+      page-break-inside: avoid;
+    }
+    code {
+      padding: 1px 3px;
+    }
+    pre code {
+      padding: 0;
+      background: none;
+    }
+    hr {
+      border: none;
+      border-top: 1px solid #e2e8f0;
+      margin: 14px 0;
+    }
+  </style>
+</head>
+<body>
+<h1 id="sentryscan-assignment-12-deterministic-rule-based-reflex-reasoner">SentryScan: Assignment 1.2 — Deterministic Rule-Based Reflex Reasoner</h1>
+<p><strong>Course:</strong> 21CSE525T — Agent Technology<br />
+<strong>Assignment:</strong> 1.2 — Rule-Based Reflex Reasoner<br />
+<strong>Student:</strong> R Ganesh [RA2212704010031]<br />
+<strong>Repository:</strong> https://github.com/drgeekg/SentryScan<br />
+<strong>Target Branch:</strong> <code>assignment/1.2-reflex-reasoner</code><br />
+<strong>Git Tag:</strong> <code>assignment-1.2</code><br />
+<strong>Status:</strong> Completed &amp; Verified  </p>
+<hr />
+<h2 id="1-executive-summary-theoretical-context">1. Executive Summary &amp; Theoretical Context</h2>
+<p>Assignment 1.2 implements the executable core of the <strong>SentryScan Reflex Reasoner</strong>, delivering an end-to-end, deterministic Sense–Parse–Decide–Act agent loop grounded in Russell &amp; Norvig's simple reflex agent taxonomy.</p>
+<h3 id="11-simple-reflex-agent-architecture">1.1 Simple Reflex Agent Architecture</h3>
+<p>A simple reflex agent selects actions based solely on the <em>current percept</em>, ignoring the history of percepts. The agent's condition-action rule table directly maps matching telemetry conditions to findings and security alerts:
+$$\text{Action} = \text{RULE}(\text{Percept})$$</p>
+<h3 id="12-key-behavioral-guarantees">1.2 Key Behavioral Guarantees</h3>
+<ol>
+<li><strong>Total Determinism:</strong> Injected virtual clocks (<code>FakeClock</code>) and monotonic zero-padded ID generators guarantee that identical telemetry fixtures yield bit-for-bit identical findings across repeated runs.</li>
+<li><strong>Quarantine &amp; Rejection Accounting:</strong> Malformed percepts (e.g., port out of bounds, blank host identifier) are isolated immediately into structured <code>record_rejected</code> audit events rather than crashing the agent.</li>
+<li><strong>Unmatched Percept Bookkeeping:</strong> Records matching zero production rules emit explicit <code>unmatched_record</code> events, ensuring an airtight, auditable percept-action ledger.</li>
+</ol>
+<hr />
+<h2 id="2-architecture-implementation-specification">2. Architecture &amp; Implementation Specification</h2>
+<pre><code>                  ┌────────────────────────────────────────────────────────┐
+                  │                 Raw Synthetic Telemetry                │
+                  │              (fixtures/sample_seed42.json)             │
+                  └───────────────────────────┬────────────────────────────┘
+                                              │
+                                              ▼
+                                ┌───────────────────────────┐
+                                │     TelemetryParser       │
+                                └──────┬─────────────┬──────┘
+                   Valid Record        │             │  Malformed Record
+                                       ▼             ▼
+                         ┌───────────────────┐ ┌───────────────────┐
+                         │ Typed Pydantic    │ │ Quarantine Event  │
+                         │ TelemetryRecord   │ │ (record_rejected) │
+                         └─────────┬─────────┘ └─────────┬─────────┘
+                                   │                     │
+                                   ▼                     │
+                         ┌───────────────────┐           │
+                         │ Condition-Action  │           │
+                         │ Rule Engine       │           │
+                         │ (RULE-001 - 006)  │           │
+                         └─────────┬─────────┘           │
+                 Matched           │   Unmatched         │
+                 Findings          ▼   Percepts          │
+              ┌──────────────────────┐ ┌───────────────┐ │
+              │ Finding Publisher    │ │ Audit Event   │ │
+              │ (CRITICAL/HIGH/MED)  │ │ (unmatched)   │ │
+              └──────────┬───────────┘ └───────┬───────┘ │
+                         │                     │         │
+                         ▼                     ▼         ▼
+                  ┌──────────────────────────────────────────────┐
+                  │          Single-Writer EventRecorder         │
+                  │   (Monotonic seq: 1..51, JSONL Persistence)  │
+                  └──────────────────────────────────────────────┘
+</code></pre>
+<h3 id="21-explicit-production-rule-engine-srcsentryscanrulesenginepy">2.1 Explicit Production Rule Engine (<code>src/sentryscan/rules/engine.py</code>)</h3>
+<table>
+<thead>
+<tr>
+<th>Rule ID</th>
+<th>Name</th>
+<th>Trigger Condition</th>
+<th>Severity</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>RULE-001</code></td>
+<td>Telnet Exposure</td>
+<td><code>port == 23</code> or <code>service == 'telnet'</code></td>
+<td><code>HIGH</code></td>
+<td>Cleartext remote administrative protocol exposed</td>
+</tr>
+<tr>
+<td><code>RULE-002</code></td>
+<td>Anonymous FTP</td>
+<td><code>port == 21</code> and <code>auth == 'anonymous'</code></td>
+<td><code>MEDIUM</code></td>
+<td>Unauthenticated public file transfer service active</td>
+</tr>
+<tr>
+<td><code>RULE-003</code></td>
+<td>Deprecated TLS</td>
+<td><code>protocol in ['SSLv2', 'SSLv3', 'TLSv1.0', 'TLSv1.1']</code></td>
+<td><code>HIGH</code></td>
+<td>Weak cipher negotiation susceptible to POODLE/BEAST</td>
+</tr>
+<tr>
+<td><code>RULE-004</code></td>
+<td>Default Credentials</td>
+<td><code>service in ['http', 'ssh']</code> and <code>auth == 'default_credentials'</code></td>
+<td><code>CRITICAL</code></td>
+<td>Factory default logins exposed on network interface</td>
+</tr>
+<tr>
+<td><code>RULE-005</code></td>
+<td>Exploit Banner Match</td>
+<td><code>banner matches Known Exploited Vulnerability signatures</code></td>
+<td><code>CRITICAL</code></td>
+<td>High-confidence CVE remote code execution signature</td>
+</tr>
+<tr>
+<td><code>RULE-006</code></td>
+<td>Cleartext Admin HTTP</td>
+<td><code>port in [8080, 8443]</code> and <code>service == 'http'</code> (unencrypted)</td>
+<td><code>MEDIUM</code></td>
+<td>Sensitive administrative console over cleartext HTTP</td>
+</tr>
+</tbody>
+</table>
+<hr />
+<h2 id="3-rubric-compliance-verification-matrix">3. Rubric Compliance &amp; Verification Matrix</h2>
+<table>
+<thead>
+<tr>
+<th>Evaluation Criterion</th>
+<th>Specific Requirement</th>
+<th>Implementation Location</th>
+<th>Evidence Artifact &amp; Verification</th>
+<th style="text-align: center;">Status</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><strong>1. Injectable Clock &amp; Deterministic IDs</strong></td>
+<td>Abstract <code>Clock</code> protocol with <code>SystemClock</code> and <code>FakeClock</code>; monotonic and seeded <code>IdGenerator</code></td>
+<td><code>src/sentryscan/common/clock.py</code><br><code>src/sentryscan/common/id_generator.py</code></td>
+<td><code>tests/unit/test_common.py</code><br><code>evidence/trace_excerpt.jsonl</code> (identical ISO timestamps)</td>
+<td style="text-align: center;"><strong>PASSED</strong></td>
+</tr>
+<tr>
+<td><strong>2. Strongly Typed Telemetry Contracts</strong></td>
+<td>Pydantic model for <code>TelemetryRecord</code> validating ports (1–65535), non-empty <code>host_id</code>, enums for auth mode and source</td>
+<td><code>src/sentryscan/contracts/telemetry.py</code><br><code>src/sentryscan/contracts/finding.py</code></td>
+<td><code>tests/unit/test_contracts.py</code><br><code>fixtures/telemetry/sample_seed42.json</code></td>
+<td style="text-align: center;"><strong>PASSED</strong></td>
+</tr>
+<tr>
+<td><strong>3. Seeded Telemetry Dataset</strong></td>
+<td>Fixture containing 20 synthetic records across multiple hosts (<code>sim-host-001</code> … <code>sim-host-010</code>), exactly 18 valid and 2 malformed</td>
+<td><code>fixtures/telemetry/sample_seed42.json</code></td>
+<td><code>tests/unit/test_parser.py</code><br><code>evidence/run_log.txt#L6-L14</code></td>
+<td style="text-align: center;"><strong>PASSED</strong></td>
+</tr>
+<tr>
+<td><strong>4. Explicit Condition-Action Rule Table</strong></td>
+<td>Plain Python rule engine evaluating IF–THEN condition-action rules for cleartext protocols, deprecated TLS, default credentials, and exploit banners</td>
+<td><code>src/sentryscan/rules/engine.py</code> (RULE-001 through RULE-006)</td>
+<td><code>tests/unit/test_rules.py</code><br><code>evidence/run_log.txt#L15-L84</code><br>13 findings detected</td>
+<td style="text-align: center;"><strong>PASSED</strong></td>
+</tr>
+<tr>
+<td><strong>5. Malformed Payload Handling</strong></td>
+<td>Quarantines invalid records (out-of-range port, blank host ID) and emits structured <code>record_rejected</code> audit events</td>
+<td><code>src/sentryscan/sensors/parser.py</code><br><code>src/sentryscan/agents/reflex_agent.py</code></td>
+<td><code>evidence/run_log.txt#L12</code><br><code>evidence/trace_excerpt.jsonl</code> (Events #48, #49: <code>MALFORMED_TELEMETRY</code>)</td>
+<td style="text-align: center;"><strong>PASSED</strong></td>
+</tr>
+<tr>
+<td><strong>6. Unmatched Percept Accounting</strong></td>
+<td>Explicitly audits valid records that trigger zero rules (<code>unmatched_record</code> with reason <code>NO_RULES_MATCHED</code>)</td>
+<td><code>src/sentryscan/agents/reflex_agent.py</code></td>
+<td><code>evidence/trace_excerpt.jsonl</code> (Events #6, #27, #29)<br><code>tests/unit/test_reflex_agent.py</code></td>
+<td style="text-align: center;"><strong>PASSED</strong></td>
+</tr>
+<tr>
+<td><strong>7. Single-Writer Event Recorder &amp; Monotonic <code>seq</code></strong></td>
+<td>Append-only JSONL event stream with thread-safe lock, monotonic gap-free <code>seq</code>, and complete run lifecycle events</td>
+<td><code>src/sentryscan/observability/recorder.py</code><br><code>src/sentryscan/contracts/events.py</code></td>
+<td><code>tests/unit/test_recorder.py</code><br><code>evidence/trace_excerpt.jsonl</code> (<code>seq</code>: 1 … 51)</td>
+<td style="text-align: center;"><strong>PASSED</strong></td>
+</tr>
+<tr>
+<td><strong>8. Sense-Parse-Decide-Act Agent Loop &amp; Actuators</strong></td>
+<td>Complete reflex agent pipeline with Rich console table and JSON artifact exporters</td>
+<td><code>src/sentryscan/agents/reflex_agent.py</code><br><code>src/sentryscan/actuators/report.py</code></td>
+<td><code>demos/demo_assignment_1_2.py</code><br><code>tests/integration/test_assignment_1_2.py</code><br><code>evidence/run_log.txt</code></td>
+<td style="text-align: center;"><strong>PASSED</strong></td>
+</tr>
+<tr>
+<td><strong>9. Packaging &amp; Git Release Integrity</strong></td>
+<td>Dedicated branch, atomic commits, non-fast-forward merge commit, immutable tag, and verified archive packaging</td>
+<td>Monorepo root and git history</td>
+<td>Git Tag: <code>assignment-1.2</code><br>Archive: <code>dist/SentryScan_assignment_1_2.zip</code></td>
+<td style="text-align: center;"><strong>PASSED</strong></td>
+</tr>
+</tbody>
+</table>
+<hr />
+<h2 id="4-execution-results-empirical-evidence">4. Execution Results &amp; Empirical Evidence</h2>
+<h3 id="41-ingestion-finding-metrics-evidencerun_logtxt">4.1 Ingestion &amp; Finding Metrics (<code>evidence/run_log.txt</code>)</h3>
+<ul>
+<li><strong>Total Percepts Sensed:</strong> 20</li>
+<li><strong>Valid Telemetry Ingested:</strong> 18</li>
+<li><strong>Malformed Records Quarantined:</strong> 2 (<code>tel-000019</code> port 99999; <code>tel-000020</code> blank host ID)</li>
+<li><strong>Total Exposures Detected:</strong> 13 findings across:</li>
+<li><code>CRITICAL</code>: 4 (e.g., <code>sim-host-002</code> ProFTPd exploit banner, <code>sim-host-003</code> default admin creds)</li>
+<li><code>HIGH</code>: 5 (e.g., <code>sim-host-001</code> unencrypted Telnet, <code>sim-host-002</code> deprecated TLSv1.0)</li>
+<li><code>MEDIUM</code>: 4 (e.g., <code>sim-host-002</code> anonymous FTP, <code>sim-host-003</code> cleartext HTTP management)</li>
+<li><strong>Monotonic Event Sequence:</strong> Exactly 51 sequential events logged from <code>seq: 1</code> (<code>run_started</code>) to <code>seq: 51</code> (<code>run_completed</code>) with zero gaps or duplicates.</li>
+</ul>
+<hr />
+<h2 id="5-submission-package-reproduction-instructions">5. Submission Package &amp; Reproduction Instructions</h2>
+<h3 id="51-exact-submission-components">5.1 Exact Submission Components</h3>
+<ol>
+<li><strong>Report Document:</strong> <code>assignments/assignment_1_2/deliverables/SentryScan_Assignment_1_2_Report.pdf</code></li>
+<li><strong>Repository URL:</strong> <code>https://github.com/drgeekg/SentryScan</code></li>
+<li><strong>Target Branch:</strong> <code>assignment/1.2-reflex-reasoner</code></li>
+<li><strong>Immutable Git Tag:</strong> <code>assignment-1.2</code></li>
+<li><strong>Packaged ZIP Archive:</strong> <code>dist/SentryScan_assignment_1_2.zip</code></li>
+<li><strong>SHA-256 Checksum:</strong> <code>dist/SentryScan_assignment_1_2.zip.sha256</code></li>
+</ol>
+<h3 id="52-verification-commands">5.2 Verification Commands</h3>
+<pre><code class="language-bash"># Run deterministic demonstration
+python demos/demo_assignment_1_2.py
+
+# Execute test suite
+pytest -v tests/unit/test_reflex_agent.py tests/unit/test_rules.py
+
+# Package submission archive
+python scripts/package_assignment.py assignment-1.2
+</code></pre>
+</body>
+</html>

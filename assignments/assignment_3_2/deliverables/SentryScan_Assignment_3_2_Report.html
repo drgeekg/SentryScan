@@ -1,0 +1,366 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>SentryScan: Assignment 3.2 — Multi-Attribute Utility Optimization</title>
+  <style>
+    @page {
+      size: A4;
+      margin: 16mm 14mm 16mm 14mm;
+      @bottom-right {
+        content: counter(page);
+      }
+    }
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+      font-size: 9.5pt;
+      line-height: 1.45;
+      color: #1e293b;
+      margin: 0;
+      padding: 0;
+    }
+    h1 {
+      font-size: 17pt;
+      color: #0f172a;
+      border-bottom: 2px solid #2563eb;
+      padding-bottom: 4px;
+      margin-top: 0;
+      margin-bottom: 8px;
+    }
+    h2 {
+      font-size: 12.5pt;
+      color: #1e40af;
+      border-bottom: 1px solid #cbd5e1;
+      padding-bottom: 3px;
+      margin-top: 18px;
+      margin-bottom: 8px;
+      page-break-after: avoid;
+    }
+    h3 {
+      font-size: 10.5pt;
+      color: #334155;
+      margin-top: 12px;
+      margin-bottom: 4px;
+      page-break-after: avoid;
+    }
+    p, ul, ol {
+      margin-top: 0;
+      margin-bottom: 8px;
+    }
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      margin: 10px 0;
+      font-size: 8.5pt;
+      page-break-inside: avoid;
+    }
+    th, td {
+      border: 1px solid #cbd5e1;
+      padding: 5px 7px;
+      text-align: left;
+      vertical-align: top;
+    }
+    th {
+      background-color: #f1f5f9;
+      font-weight: 600;
+      color: #0f172a;
+    }
+    tr:nth-child(even) {
+      background-color: #f8fafc;
+    }
+    pre, code {
+      font-family: "SFMono-Regular", Consolas, "Liberation Mono", Menlo, monospace;
+      font-size: 8pt;
+      background-color: #f1f5f9;
+      border-radius: 3px;
+    }
+    pre {
+      padding: 7px;
+      border: 1px solid #e2e8f0;
+      overflow-x: auto;
+      page-break-inside: avoid;
+    }
+    code {
+      padding: 1px 3px;
+    }
+    pre code {
+      padding: 0;
+      background: none;
+    }
+    hr {
+      border: none;
+      border-top: 1px solid #e2e8f0;
+      margin: 14px 0;
+    }
+  </style>
+</head>
+<body>
+<h1 id="sentryscan-assignment-32-multi-attribute-utility-optimization">SentryScan: Assignment 3.2 — Multi-Attribute Utility Optimization</h1>
+<p><strong>Course:</strong> 21CSE525T — Agent Technology<br />
+<strong>Assignment:</strong> 3.2 — Multi-Attribute Utility Optimization &amp; Infeasibility Filtering<br />
+<strong>Student:</strong> R Ganesh [RA2212704010031]<br />
+<strong>Repository:</strong> https://github.com/drgeekg/SentryScan<br />
+<strong>Target Branch:</strong> <code>assignment/3.2-utility-optimization</code><br />
+<strong>Git Tag:</strong> <code>assignment-3.2</code><br />
+<strong>Status:</strong> Completed &amp; Verified  </p>
+<hr />
+<h2 id="1-executive-summary-theoretical-context">1. Executive Summary &amp; Theoretical Context</h2>
+<p>Assignment 3.2 equips SentryScan with a formal <strong>Multi-Attribute Utility Theory (MAUT)</strong> optimization engine (Keeney &amp; Raiffa, 1976; Russell &amp; Norvig, Ch. 16), enabling rational decision-making across competing operational objectives.</p>
+<h3 id="11-rational-agency-utility-theory">1.1 Rational Agency &amp; Utility Theory</h3>
+<p>A rational agent acts to maximize expected utility. In cyber vulnerability management, plans must balance five competing dimensions:
+1. <strong>Severity Coverage ($C_{sev}$):</strong> Fraction of detected critical vulnerabilities addressed (benefit).
+2. <strong>Host Coverage ($C_{hosts}$):</strong> Fraction of network fleet endpoints audited (benefit).
+3. <strong>Execution Cost ($Cost$):</strong> Computational / bandwidth resource consumption (cost).
+4. <strong>Completion Time ($Time$):</strong> Wall-clock duration in milliseconds (cost).
+5. <strong>Residual Risk ($Risk$):</strong> Unmitigated exposure likelihood (cost).</p>
+<hr />
+<h2 id="2-architecture-implementation-specification">2. Architecture &amp; Implementation Specification</h2>
+<h3 id="21-normalized-multi-attribute-utility-formula">2.1 Normalized Multi-Attribute Utility Formula</h3>
+<p>For each candidate plan $o$, attributes are normalized to $[0, 1]$ across the candidate pool:
+$$U(o) = w_1\bar{C}<em>{sev} + w_2\bar{C}</em>{hosts} - w_3\overline{Cost} - w_4\overline{Time} - w_5\overline{Risk}$$
+where:
+$$\sum_{i=1}^5 w_i = 1.0, \quad w_i \ge 0$$</p>
+<h3 id="22-infeasibility-filtering-hard-constraints">2.2 Infeasibility Filtering &amp; Hard Constraints</h3>
+<p>Before utility computation, candidates exceeding operational thresholds are strictly filtered:
+- $\text{Cost} &gt; \text{Budget}<em>{max} \implies U(o) = -\infty$ (Rejection: <code>COST_EXCEEDED</code>)
+- $\text{Time} &gt; \text{Deadline}</em>{max} \implies U(o) = -\infty$ (Rejection: <code>TIME_EXCEEDED</code>)
+- $\text{BatchList} = \emptyset \implies U(o) = -\infty$ (Rejection: <code>EMPTY_BATCH_LIST</code>)</p>
+<p>The rational choice is the feasible argmax:
+$$o^* = \arg\max_{o \in O_{feas}} U(o)$$
+Ties are resolved deterministically by comparing $(C_{sev}, C_{hosts}, -Cost, \text{plan_id})$.</p>
+<hr />
+<h2 id="3-rubric-compliance-verification-matrix">3. Rubric Compliance &amp; Verification Matrix</h2>
+<table>
+<thead>
+<tr>
+<th>Evaluation Criterion</th>
+<th>Implementation Component</th>
+<th>Evidence Artifact</th>
+<th style="text-align: center;">Status</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><strong>1. Normalized Multi-Attribute Utility Function</strong></td>
+<td><code>src/sentryscan/optimizer/formula.py</code>: Implements $U(o)$ with bounded $[0, 1]$ normalization</td>
+<td><code>tests/unit/test_optimizer_formula.py</code><br><code>evidence/candidate_comparison_table.md</code></td>
+<td style="text-align: center;"><strong>PASSED</strong></td>
+</tr>
+<tr>
+<td><strong>2. Validated Weight Profiles</strong></td>
+<td><code>src/sentryscan/optimizer/weights.py</code>: <code>UtilityWeights</code> model with $\sum w_i = 1.0$ validation, non-negativity constraint, and posture presets</td>
+<td><code>tests/unit/test_optimizer_formula.py</code><br><code>evidence/weight_sensitivity_report.json</code></td>
+<td style="text-align: center;"><strong>PASSED</strong></td>
+</tr>
+<tr>
+<td><strong>3. Hard Constraint &amp; Infeasibility Filtering</strong></td>
+<td><code>src/sentryscan/optimizer/engine.py</code>: Strict isolation of invalid candidates with explicit rejection reasons and $-\infty$ utility assignment</td>
+<td><code>tests/unit/test_optimizer_engine.py</code><br><code>evidence/candidate_comparison_table.md</code></td>
+<td style="text-align: center;"><strong>PASSED</strong></td>
+</tr>
+<tr>
+<td><strong>4. Feasible Argmax Selection &amp; Deterministic Ties</strong></td>
+<td><code>src/sentryscan/optimizer/engine.py</code>: Selection of $o^* = \arg\max_{o \in O_{feas}} U(o)$ with deterministic tie-breaking</td>
+<td><code>tests/unit/test_optimizer_engine.py</code><br><code>demos/demo_assignment_3_2.py</code> Step 1</td>
+<td style="text-align: center;"><strong>PASSED</strong></td>
+</tr>
+<tr>
+<td><strong>5. Robust Edge &amp; Boundary Handling</strong></td>
+<td>Safe handling of empty candidate sets, zero-range spans, non-finite values (NaN, Inf), and all-infeasible pools</td>
+<td><code>tests/unit/test_optimizer_edge_cases.py</code></td>
+<td style="text-align: center;"><strong>PASSED</strong></td>
+</tr>
+<tr>
+<td><strong>6. Verification Against Independent Exhaustive Search</strong></td>
+<td>Exhaustive baseline verification checking 100% mathematical parity against brute-force evaluation</td>
+<td><code>tests/unit/test_optimizer_brute_force.py</code><br><code>evidence/run_log.txt</code> Step 2</td>
+<td style="text-align: center;"><strong>PASSED</strong></td>
+</tr>
+<tr>
+<td><strong>7. Negotiation Seam Integration (<code>score_bid</code>)</strong></td>
+<td>Seamless refactoring of <code>src/sentryscan/negotiation/scoring.py</code> to delegate to <code>PlanOptimizer</code> preserving 100% backward compatibility</td>
+<td><code>tests/unit/test_negotiation.py</code><br><code>tests/integration/test_multi_agent_coordination.py</code></td>
+<td style="text-align: center;"><strong>PASSED</strong></td>
+</tr>
+<tr>
+<td><strong>8. Multi-Scenario Weight Sensitivity Analysis</strong></td>
+<td>Demonstrating rank-order and winner shifts across operational postures (balanced, risk-first, coverage-first, cost-constrained)</td>
+<td><code>evidence/weight_sensitivity_report.json</code><br><code>demos/demo_assignment_3_2.py</code> Step 3</td>
+<td style="text-align: center;"><strong>PASSED</strong></td>
+</tr>
+<tr>
+<td><strong>9. Trace &amp; Single-Writer Auditing</strong></td>
+<td>Sequential event log recording optimization requests, candidate scoring, and winner selection via <code>src/sentryscan/observability/recorder.py</code></td>
+<td><code>evidence/trace_excerpt.jsonl</code></td>
+<td style="text-align: center;"><strong>PASSED</strong></td>
+</tr>
+</tbody>
+</table>
+<hr />
+<h2 id="4-execution-results-empirical-evidence">4. Execution Results &amp; Empirical Evidence</h2>
+<h3 id="41-ten-candidate-optimization-table-evidencecandidate_comparison_tablemd">4.1 Ten-Candidate Optimization Table (<code>evidence/candidate_comparison_table.md</code>)</h3>
+<p>Constraints: $\text{Cost} \le 50.0$, $\text{Time} \le 400.0$ ms. Weights: $w_{sev}=0.35, w_{hosts}=0.25, w_{cost}=0.15, w_{time}=0.15, w_{risk}=0.10$.</p>
+<table>
+<thead>
+<tr>
+<th>Plan ID</th>
+<th>Proposer</th>
+<th>$C_{sev}$</th>
+<th>$C_{hosts}$</th>
+<th>Cost</th>
+<th>Time</th>
+<th>Risk</th>
+<th style="text-align: center;">Feasible?</th>
+<th style="text-align: center;">Score $U(o)$</th>
+<th>Decision</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>plan-01-minimal</code></td>
+<td><code>scout</code></td>
+<td>0.30</td>
+<td>0.40</td>
+<td>12.0</td>
+<td>60ms</td>
+<td>0.20</td>
+<td style="text-align: center;">✅ Yes</td>
+<td style="text-align: center;"><code>+0.1580</code></td>
+<td>Suboptimal</td>
+</tr>
+<tr>
+<td><code>plan-02-breadth</code></td>
+<td><code>scout</code></td>
+<td>0.65</td>
+<td>0.85</td>
+<td>28.0</td>
+<td>150ms</td>
+<td>0.12</td>
+<td style="text-align: center;">✅ Yes</td>
+<td style="text-align: center;"><code>+0.3635</code></td>
+<td>Suboptimal</td>
+</tr>
+<tr>
+<td><code>plan-03-risk-heavy</code></td>
+<td><code>triage</code></td>
+<td>0.90</td>
+<td>0.60</td>
+<td>32.0</td>
+<td>180ms</td>
+<td>0.06</td>
+<td style="text-align: center;">✅ Yes</td>
+<td style="text-align: center;"><code>+0.3840</code></td>
+<td>Suboptimal</td>
+</tr>
+<tr>
+<td><code>plan-04-balanced-opt</code></td>
+<td><code>triage</code></td>
+<td><strong>0.92</strong></td>
+<td><strong>0.88</strong></td>
+<td>45.0</td>
+<td>220ms</td>
+<td>0.05</td>
+<td style="text-align: center;">✅ Yes</td>
+<td style="text-align: center;"><code>+0.4365</code></td>
+<td><strong>WINNER (argmax $o^*$)</strong></td>
+</tr>
+<tr>
+<td><code>plan-05-fast-triage</code></td>
+<td><code>triage</code></td>
+<td>0.75</td>
+<td>0.35</td>
+<td>18.0</td>
+<td>80ms</td>
+<td>0.10</td>
+<td style="text-align: center;">✅ Yes</td>
+<td style="text-align: center;"><code>+0.3010</code></td>
+<td>Suboptimal</td>
+</tr>
+<tr>
+<td><code>plan-06-infeasible-cost</code></td>
+<td><code>scout</code></td>
+<td>0.98</td>
+<td>0.95</td>
+<td>78.0</td>
+<td>310ms</td>
+<td>0.04</td>
+<td style="text-align: center;">❌ No</td>
+<td style="text-align: center;"><code>-\infty</code></td>
+<td><strong>REJECTED:</strong> Cost Exceeded (78 &gt; 50)</td>
+</tr>
+<tr>
+<td><code>plan-07-infeasible-time</code></td>
+<td><code>triage</code></td>
+<td>0.80</td>
+<td>0.70</td>
+<td>40.0</td>
+<td>450ms</td>
+<td>0.08</td>
+<td style="text-align: center;">❌ No</td>
+<td style="text-align: center;"><code>-\infty</code></td>
+<td><strong>REJECTED:</strong> Time Exceeded (450 &gt; 400)</td>
+</tr>
+<tr>
+<td><code>plan-08-empty-batch</code></td>
+<td><code>scout</code></td>
+<td>0.00</td>
+<td>0.00</td>
+<td>0.0</td>
+<td>0ms</td>
+<td>0.50</td>
+<td style="text-align: center;">❌ No</td>
+<td style="text-align: center;"><code>-\infty</code></td>
+<td><strong>REJECTED:</strong> Empty Batch List</td>
+</tr>
+<tr>
+<td><code>plan-09-moderate</code></td>
+<td><code>scout</code></td>
+<td>0.50</td>
+<td>0.70</td>
+<td>22.0</td>
+<td>110ms</td>
+<td>0.15</td>
+<td style="text-align: center;">✅ Yes</td>
+<td style="text-align: center;"><code>+0.2855</code></td>
+<td>Suboptimal</td>
+</tr>
+<tr>
+<td><code>plan-10-lean</code></td>
+<td><code>triage</code></td>
+<td>0.82</td>
+<td>0.50</td>
+<td>24.0</td>
+<td>130ms</td>
+<td>0.07</td>
+<td style="text-align: center;">✅ Yes</td>
+<td style="text-align: center;"><code>+0.3495</code></td>
+<td>Suboptimal</td>
+</tr>
+</tbody>
+</table>
+<h3 id="42-posture-sensitivity-analysis-evidenceweight_sensitivity_reportjson">4.2 Posture Sensitivity Analysis (<code>evidence/weight_sensitivity_report.json</code>)</h3>
+<ul>
+<li><strong>Balanced Posture:</strong> Winner = <code>plan-04-balanced-opt</code> ($U = +0.4365$).</li>
+<li><strong>Coverage-First Posture:</strong> Winner shifts to <code>plan-02-breadth</code> due to highest $C_{hosts}=0.85$ under low cost.</li>
+<li><strong>Risk-First Posture:</strong> Winner shifts to <code>plan-03-risk-heavy</code> with lowest residual risk ($0.06$).</li>
+</ul>
+<hr />
+<h2 id="5-submission-package-reproduction-instructions">5. Submission Package &amp; Reproduction Instructions</h2>
+<h3 id="51-exact-submission-components">5.1 Exact Submission Components</h3>
+<ol>
+<li><strong>Report Document:</strong> <code>assignments/assignment_3_2/deliverables/SentryScan_Assignment_3_2_Report.pdf</code></li>
+<li><strong>Repository URL:</strong> <code>https://github.com/drgeekg/SentryScan</code></li>
+<li><strong>Target Branch:</strong> <code>assignment/3.2-utility-optimization</code></li>
+<li><strong>Immutable Git Tag:</strong> <code>assignment-3.2</code></li>
+<li><strong>Packaged ZIP Archive:</strong> <code>dist/SentryScan_assignment_3_2.zip</code></li>
+<li><strong>SHA-256 Checksum:</strong> <code>dist/SentryScan_assignment_3_2.zip.sha256</code></li>
+</ol>
+<h3 id="52-verification-commands">5.2 Verification Commands</h3>
+<pre><code class="language-bash"># Run optimization demonstration
+python demos/demo_assignment_3_2.py
+
+# Execute optimizer test suite
+pytest -v tests/unit/test_optimizer_formula.py tests/unit/test_optimizer_engine.py tests/unit/test_optimizer_brute_force.py
+</code></pre>
+</body>
+</html>

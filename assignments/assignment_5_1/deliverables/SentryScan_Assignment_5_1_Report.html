@@ -1,0 +1,329 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>SentryScan: Assignment 5.1 — Cryptographic Message Authentication & Security Gate</title>
+  <style>
+    @page {
+      size: A4;
+      margin: 16mm 14mm 16mm 14mm;
+      @bottom-right {
+        content: counter(page);
+      }
+    }
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+      font-size: 9.5pt;
+      line-height: 1.45;
+      color: #1e293b;
+      margin: 0;
+      padding: 0;
+    }
+    h1 {
+      font-size: 17pt;
+      color: #0f172a;
+      border-bottom: 2px solid #2563eb;
+      padding-bottom: 4px;
+      margin-top: 0;
+      margin-bottom: 8px;
+    }
+    h2 {
+      font-size: 12.5pt;
+      color: #1e40af;
+      border-bottom: 1px solid #cbd5e1;
+      padding-bottom: 3px;
+      margin-top: 18px;
+      margin-bottom: 8px;
+      page-break-after: avoid;
+    }
+    h3 {
+      font-size: 10.5pt;
+      color: #334155;
+      margin-top: 12px;
+      margin-bottom: 4px;
+      page-break-after: avoid;
+    }
+    p, ul, ol {
+      margin-top: 0;
+      margin-bottom: 8px;
+    }
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      margin: 10px 0;
+      font-size: 8.5pt;
+      page-break-inside: avoid;
+    }
+    th, td {
+      border: 1px solid #cbd5e1;
+      padding: 5px 7px;
+      text-align: left;
+      vertical-align: top;
+    }
+    th {
+      background-color: #f1f5f9;
+      font-weight: 600;
+      color: #0f172a;
+    }
+    tr:nth-child(even) {
+      background-color: #f8fafc;
+    }
+    pre, code {
+      font-family: "SFMono-Regular", Consolas, "Liberation Mono", Menlo, monospace;
+      font-size: 8pt;
+      background-color: #f1f5f9;
+      border-radius: 3px;
+    }
+    pre {
+      padding: 7px;
+      border: 1px solid #e2e8f0;
+      overflow-x: auto;
+      page-break-inside: avoid;
+    }
+    code {
+      padding: 1px 3px;
+    }
+    pre code {
+      padding: 0;
+      background: none;
+    }
+    hr {
+      border: none;
+      border-top: 1px solid #e2e8f0;
+      margin: 14px 0;
+    }
+  </style>
+</head>
+<body>
+<h1 id="sentryscan-assignment-51-cryptographic-message-authentication-security-gate">SentryScan: Assignment 5.1 — Cryptographic Message Authentication &amp; Security Gate</h1>
+<p><strong>Course:</strong> 21CSE525T — Agent Technology<br />
+<strong>Assignment:</strong> 5.1 — Cryptographic Message Authentication &amp; Security Gate<br />
+<strong>Student:</strong> R Ganesh [RA2212704010031]<br />
+<strong>Repository:</strong> https://github.com/drgeekg/SentryScan<br />
+<strong>Target Branch:</strong> <code>assignment/5.1-authentication</code><br />
+<strong>Git Tag:</strong> <code>assignment-5.1</code><br />
+<strong>Status:</strong> Completed &amp; Verified  </p>
+<hr />
+<h2 id="1-executive-summary-theoretical-context">1. Executive Summary &amp; Theoretical Context</h2>
+<p>Assignment 5.1 hardens SentryScan against <strong>adversarial manipulation in distributed multi-agent systems</strong> by implementing a formal <strong>Cryptographic Security Gate</strong> based on modern asymmetric Ed25519 signatures and canonical payload digests.</p>
+<h3 id="11-the-threat-of-confused-deputies-byzantine-agents">1.1 The Threat of Confused Deputies &amp; Byzantine Agents</h3>
+<p>In decentralized agent collectives, an agent's internal mental state (Beliefs) must never be polluted by forged, replayed, or tampered messages from untrusted entities:
+- <strong>Canonical Envelope Signing:</strong> Envelopes are canonically serialized and cryptographically signed with the sender's private Ed25519 key, binding the envelope metadata to the SHA-256 digest of the payload.
+- <strong>Fail-Closed Security Gate:</strong> Inbound messages must pass an 8-stage verification pipeline before admission to the BDI reasoning core. Any failure immediately drops the packet and emits an audit alert.</p>
+<hr />
+<h2 id="2-architecture-implementation-specification">2. Architecture &amp; Implementation Specification</h2>
+<pre><code>                      Inbound Raw JSON Message
+                                 │
+                                 ▼
+                     ┌──────────────────────┐
+                     │ 1. Schema Validation │
+                     └──────────┬───────────┘
+                                │ Pass
+                                ▼
+                     ┌──────────────────────┐
+                     │ 2. Sender Registry   │
+                     └──────────┬───────────┘
+                                │ Pass (Registered Public Key)
+                                ▼
+                     ┌──────────────────────┐
+                     │ 3. Recipient Match   │
+                     └──────────┬───────────┘
+                                │ Pass (Addressed to this Agent)
+                                ▼
+                     ┌──────────────────────┐
+                     │ 4. Payload SHA-256   │
+                     └──────────┬───────────┘
+                                │ Pass (Digest Matches)
+                                ▼
+                     ┌──────────────────────┐
+                     │ 5. Ed25519 Signature │
+                     └──────────┬───────────┘
+                                │ Pass (Valid Asymmetric Sig)
+                                ▼
+                     ┌──────────────────────┐
+                     │ 6. Clock Skew (±30s) │
+                     └──────────┬───────────┘
+                                │ Pass (Fresh Timestamp)
+                                ▼
+                     ┌──────────────────────┐
+                     │ 7. Nonce Anti-Replay │
+                     └──────────┬───────────┘
+                                │ Pass (Unseen Nonce, Not Saturated)
+                                ▼
+                     ┌──────────────────────┐
+                     │ Admission to BDI Core│
+                     │ (Zero Belief Poison) │
+                     └──────────────────────┘
+</code></pre>
+<hr />
+<h2 id="3-rubric-compliance-verification-matrix">3. Rubric Compliance &amp; Verification Matrix</h2>
+<table>
+<thead>
+<tr>
+<th>Evaluation Criterion</th>
+<th>Implementation Component</th>
+<th>Evidence Artifact</th>
+<th style="text-align: center;">Status</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><strong>1. Cryptographic Agent Identity Management</strong></td>
+<td><code>src/sentryscan/security/identity.py</code>: <code>AgentIdentity</code> with fresh throwaway Ed25519 generation, 32-byte seed derivation, and raw/hex formatting</td>
+<td><code>tests/unit/test_security_identity.py</code><br><code>demos/demo_assignment_5_1.py</code> Initialization</td>
+<td style="text-align: center;"><strong>PASSED</strong></td>
+</tr>
+<tr>
+<td><strong>2. Trusted Agent Public Key Registry</strong></td>
+<td><code>src/sentryscan/security/registry.py</code>: <code>TrustedAgentRecord</code>, <code>TrustedAgentRegistry</code> with validation, revocation, and JSON persistence (<code>config/trusted_agents.example.json</code>)</td>
+<td><code>tests/unit/test_security_identity.py</code> (<code>test_trusted_agent_registry_*</code>)</td>
+<td style="text-align: center;"><strong>PASSED</strong></td>
+</tr>
+<tr>
+<td><strong>3. Canonical Envelope Signing &amp; Payload Integrity</strong></td>
+<td><code>src/sentryscan/security/canonical.py</code>: <code>sign_envelope()</code>, <code>verify_payload_digest()</code>, and <code>verify_envelope_signature()</code> enforcing SHA-256 digest binding</td>
+<td><code>tests/unit/test_security_signing.py</code><br><code>evidence/security_gate_audit.md</code> Scenarios 1 &amp; 4</td>
+<td style="text-align: center;"><strong>PASSED</strong></td>
+</tr>
+<tr>
+<td><strong>4. Fail-Closed Anti-Replay Nonce Cache</strong></td>
+<td><code>src/sentryscan/security/nonce_cache.py</code>: <code>NonceCache</code> with dual FIFO/TTL expiration, bounded capacity (default 10,000), and fail-closed saturation policy</td>
+<td><code>tests/unit/test_security_gate.py</code> (<code>test_nonce_cache_*</code>)<br><code>evidence/security_gate_audit.md</code> Scenarios 7 &amp; 8</td>
+<td style="text-align: center;"><strong>PASSED</strong></td>
+</tr>
+<tr>
+<td><strong>5. Multi-Stage Inbound Security Gate</strong></td>
+<td><code>src/sentryscan/security/gate.py</code>: <code>SecurityGate</code> enforcing sequential evaluation pipeline: JSON, Schema, Sender Registry, Recipient Matching, Payload Digest, Ed25519 Signature, Clock Skew, Anti-Replay</td>
+<td><code>tests/unit/test_security_gate.py</code><br><code>evidence/security_gate_audit.md</code> Scenarios 1–8</td>
+<td style="text-align: center;"><strong>PASSED</strong></td>
+</tr>
+<tr>
+<td><strong>6. Deliberative BDI Shielding</strong></td>
+<td><code>src/sentryscan/agents/analyst.py</code>: Inbound gate verification in <code>process_message()</code>, emitting structured <code>ERROR</code> on rejection and guaranteeing zero belief pollution</td>
+<td><code>tests/unit/test_security_gate.py</code> (<code>test_analyst_agent_shielded_by_gate</code>)<br><code>demos/demo_assignment_5_1.py</code> Scenarios 1–7</td>
+<td style="text-align: center;"><strong>PASSED</strong></td>
+</tr>
+<tr>
+<td><strong>7. Systematic Attack Vector Verification</strong></td>
+<td><code>demos/demo_assignment_5_1.py</code>: Comprehensive test harness executing nominal message + 7 distinct attack vectors (<code>UNKNOWN_SENDER</code>, <code>WRONG_RECIPIENT</code>, <code>PAYLOAD_TAMPERED</code>, <code>BAD_SIGNATURE</code>, <code>STALE_TIMESTAMP</code>, <code>REPLAYED_NONCE</code>, <code>NONCE_CACHE_FULL</code>)</td>
+<td><code>evidence/run_log.txt</code><br><code>evidence/security_gate_audit.md</code></td>
+<td style="text-align: center;"><strong>PASSED</strong></td>
+</tr>
+<tr>
+<td><strong>8. Audit Trace &amp; Observability Integration</strong></td>
+<td><code>src/sentryscan/observability/recorder.py</code>: Single-writer monotonic <code>seq</code> logging of security verdicts and rejections</td>
+<td><code>evidence/trace_excerpt.jsonl</code></td>
+<td style="text-align: center;"><strong>PASSED</strong></td>
+</tr>
+</tbody>
+</table>
+<hr />
+<h2 id="4-execution-results-empirical-evidence">4. Execution Results &amp; Empirical Evidence</h2>
+<h3 id="41-eight-attack-vector-verification-matrix-evidencesecurity_gate_auditmd">4.1 Eight Attack Vector Verification Matrix (<code>evidence/security_gate_audit.md</code>)</h3>
+<table>
+<thead>
+<tr>
+<th>Scenario</th>
+<th>Sender</th>
+<th>Attack / Verification Vector</th>
+<th>Expected Code</th>
+<th>Actual Code</th>
+<th>Agent Shield Status</th>
+<th style="text-align: center;">Verdict</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><strong>1. Nominal Valid Message</strong></td>
+<td><code>sensor-agent-01</code></td>
+<td>None (Legitimate signed telemetry)</td>
+<td><code>OK</code></td>
+<td><code>OK</code></td>
+<td>Processed (Beliefs updated)</td>
+<td style="text-align: center;"><strong>PASS</strong></td>
+</tr>
+<tr>
+<td><strong>2. Untrusted Sender</strong></td>
+<td><code>rogue-agent-99</code></td>
+<td>Rogue agent spoofing command</td>
+<td><code>UNKNOWN_SENDER</code></td>
+<td><code>UNKNOWN_SENDER</code></td>
+<td>Shielded (ERROR response)</td>
+<td style="text-align: center;"><strong>PASS</strong></td>
+</tr>
+<tr>
+<td><strong>3. Wrong Recipient</strong></td>
+<td><code>supervisor-01</code></td>
+<td>Misrouted packet</td>
+<td><code>WRONG_RECIPIENT</code></td>
+<td><code>WRONG_RECIPIENT</code></td>
+<td>Shielded (ERROR response)</td>
+<td style="text-align: center;"><strong>PASS</strong></td>
+</tr>
+<tr>
+<td><strong>4. Tampered Payload</strong></td>
+<td><code>sensor-agent-01</code></td>
+<td>MITM parameter modification</td>
+<td><code>PAYLOAD_TAMPERED</code></td>
+<td><code>PAYLOAD_TAMPERED</code></td>
+<td>Shielded (ERROR response)</td>
+<td style="text-align: center;"><strong>PASS</strong></td>
+</tr>
+<tr>
+<td><strong>5. Bad Signature</strong></td>
+<td><code>supervisor (fake)</code></td>
+<td>Forged invalid Ed25519 signature</td>
+<td><code>BAD_SIGNATURE</code></td>
+<td><code>BAD_SIGNATURE</code></td>
+<td>Shielded (ERROR response)</td>
+<td style="text-align: center;"><strong>PASS</strong></td>
+</tr>
+<tr>
+<td><strong>6. Stale Timestamp</strong></td>
+<td><code>sensor-agent-01</code></td>
+<td>Expired packet (&gt;30s clock drift)</td>
+<td><code>STALE_TIMESTAMP</code></td>
+<td><code>STALE_TIMESTAMP</code></td>
+<td>Shielded (ERROR response)</td>
+<td style="text-align: center;"><strong>PASS</strong></td>
+</tr>
+<tr>
+<td><strong>7. Replayed Envelope</strong></td>
+<td><code>sensor-agent-01</code></td>
+<td>Eavesdropped packet re-transmission</td>
+<td><code>REPLAYED_NONCE</code></td>
+<td><code>REPLAYED_NONCE</code></td>
+<td>Shielded (ERROR response)</td>
+<td style="text-align: center;"><strong>PASS</strong></td>
+</tr>
+<tr>
+<td><strong>8. Cache Saturated</strong></td>
+<td><code>sensor-agent-01</code></td>
+<td>Nonce flood / Resource exhaustion</td>
+<td><code>NONCE_CACHE_FULL</code></td>
+<td><code>NONCE_CACHE_FULL</code></td>
+<td>Shielded (Fail-closed drop)</td>
+<td style="text-align: center;"><strong>PASS</strong></td>
+</tr>
+</tbody>
+</table>
+<hr />
+<h2 id="5-submission-package-reproduction-instructions">5. Submission Package &amp; Reproduction Instructions</h2>
+<h3 id="51-exact-submission-components">5.1 Exact Submission Components</h3>
+<ol>
+<li><strong>Report Document:</strong> <code>assignments/assignment_5_1/deliverables/SentryScan_Assignment_5_1_Report.pdf</code></li>
+<li><strong>Repository URL:</strong> <code>https://github.com/drgeekg/SentryScan</code></li>
+<li><strong>Target Branch:</strong> <code>assignment/5.1-authentication</code></li>
+<li><strong>Immutable Git Tag:</strong> <code>assignment-5.1</code></li>
+<li><strong>Packaged ZIP Archive:</strong> <code>dist/SentryScan_assignment_5_1.zip</code></li>
+<li><strong>SHA-256 Checksum:</strong> <code>dist/SentryScan_assignment_5_1.zip.sha256</code></li>
+</ol>
+<h3 id="52-verification-commands">5.2 Verification Commands</h3>
+<pre><code class="language-bash"># Run security gate attack simulation demonstration
+python demos/demo_assignment_5_1.py
+
+# Execute cryptographic security test suite
+pytest -v tests/unit/test_security_identity.py tests/unit/test_security_signing.py tests/unit/test_security_gate.py
+</code></pre>
+</body>
+</html>
