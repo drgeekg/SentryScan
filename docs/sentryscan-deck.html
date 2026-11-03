@@ -1,0 +1,185 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>SentryScan — Status Deck</title>
+<style>
+:root{--bg:#0b0f14;--panel:#121923;--line:#223042;--ink:#e8edf3;--mute:#8b9bb0;--amber:#ffb454;--teal:#4fd1c5;--red:#ff6b6b;--green:#7bd88f;
+--f:"Segoe UI Variable","Segoe UI",system-ui,sans-serif;--m:"Cascadia Code",Consolas,monospace}
+*{box-sizing:border-box;margin:0}
+html,body{height:100%;background:var(--bg);color:var(--ink);font-family:var(--f);overflow:hidden}
+.slide{position:absolute;inset:0;padding:6vh 7vw 9vh;display:flex;flex-direction:column;justify-content:center;opacity:0;visibility:hidden;transition:opacity .5s,visibility .5s}
+.slide.active{opacity:1;visibility:visible}
+.kicker{font:600 .8rem var(--m);letter-spacing:.18em;text-transform:uppercase;color:var(--amber);margin-bottom:1.2vh}
+h1{font-size:clamp(2.6rem,7vw,6rem);line-height:.98;letter-spacing:-.03em;max-width:14ch}
+h2{font-size:clamp(1.8rem,3.6vw,3.2rem);letter-spacing:-.02em;line-height:1.05;margin-bottom:3vh;max-width:22ch}
+p.lead{font-size:clamp(1rem,1.5vw,1.35rem);color:var(--mute);max-width:52ch;margin-top:3vh;line-height:1.5}
+.grid{display:grid;gap:1.4vw}.g2{grid-template-columns:repeat(2,1fr)}.g3{grid-template-columns:repeat(3,1fr)}.g4{grid-template-columns:repeat(4,1fr)}
+.card{background:var(--panel);border:1px solid var(--line);border-radius:10px;padding:1.6vh 1.2vw}
+.card b{display:block;font-size:clamp(.95rem,1.25vw,1.15rem);margin-bottom:.6vh}
+.card span{color:var(--mute);font-size:clamp(.8rem,1vw,.95rem);line-height:1.4}
+.card code{font:.78rem var(--m);color:var(--teal)}
+.big{font-size:clamp(2.4rem,5vw,4.4rem);font-weight:700;color:var(--amber);letter-spacing:-.03em}
+.tag{display:inline-block;font:600 .7rem var(--m);padding:.2em .6em;border-radius:99px;margin-bottom:.8vh;letter-spacing:.06em}
+.done{background:#7bd88f22;color:var(--green)}.todo{background:#ffb45422;color:var(--amber)}.fix{background:#ff6b6b22;color:var(--red)}
+.flow{display:flex;align-items:stretch;gap:.6vw}
+.node{flex:1;background:var(--panel);border:1px solid var(--line);border-radius:10px;padding:1.4vh .8vw;font-size:clamp(.75rem,.95vw,.95rem)}
+.node b{display:block;color:var(--teal);margin-bottom:.4vh}.node span{color:var(--mute);font-size:.85em}
+.arrow{align-self:center;color:var(--amber);font-size:1.4rem}
+.bar{height:6px;background:var(--line);border-radius:3px;overflow:hidden;margin-top:1vh}
+.bar i{display:block;height:100%;background:var(--amber);width:0;transition:width 1.2s .3s cubic-bezier(.2,.8,.2,1)}
+.active .bar i{width:var(--w)}
+.row{display:grid;grid-template-columns:11ch 1fr 4ch;gap:1vw;align-items:center;font-size:clamp(.85rem,1.1vw,1.05rem);margin:1vh 0}
+.row em{font:normal .85rem var(--m);color:var(--mute);text-align:right}
+/* reveal */
+.slide .r{opacity:0;transform:translateY(22px)}
+.slide.active .r{animation:up .7s cubic-bezier(.2,.8,.2,1) forwards;animation-delay:calc(var(--i,0)*90ms + 150ms)}
+@keyframes up{to{opacity:1;transform:none}}
+.pulse{display:inline-block;width:.6em;height:.6em;border-radius:50%;background:var(--green);margin-right:.5em;animation:p 1.8s infinite}
+@keyframes p{50%{box-shadow:0 0 0 .5em #7bd88f00;opacity:.5}0%{box-shadow:0 0 0 0 #7bd88f88}}
+#prog{position:fixed;left:0;bottom:0;height:3px;background:var(--amber);transition:width .4s}
+#hud{position:fixed;bottom:2.2vh;right:3vw;font:.75rem var(--m);color:var(--mute)}
+#hud button{background:none;border:1px solid var(--line);color:var(--ink);border-radius:6px;padding:.3em .8em;cursor:pointer;margin-left:.4em}
+#hud button:hover{border-color:var(--amber)}
+ul.l{list-style:none;padding:0}ul.l li{padding:.9vh 0;border-bottom:1px solid var(--line);font-size:clamp(.9rem,1.2vw,1.1rem)}
+ul.l li small{color:var(--mute);display:block;font-size:.8em}
+@media(max-width:800px){.g3,.g4,.g2{grid-template-columns:1fr}.flow{flex-direction:column}.arrow{transform:rotate(90deg)}.slide{overflow:auto;justify-content:flex-start}}
+@media(prefers-reduced-motion:reduce){.slide,.slide .r,.bar i{transition:none;animation:none!important;opacity:1;transform:none}.slide:not(.active){opacity:0}}
+</style></head><body>
+
+<section class="slide active">
+ <div class="kicker r" style="--i:0">Status deck · Nov 2026 · v2.1</div>
+ <h1 class="r" style="--i:1">SentryScan</h1>
+ <p class="lead r" style="--i:2">An autonomous multi-agent cyber-defence platform: sense, verify, negotiate, decide, contain. What is built, what is next, what needs polish.</p>
+ <p class="lead r" style="--i:3"><span class="pulse"></span>Press → or Space to advance</p>
+</section>
+
+<section class="slide">
+ <div class="kicker r">01 · What it is</div>
+ <h2 class="r" style="--i:1">Two products and a demo rig on one agent core.</h2>
+ <div class="grid g3">
+  <div class="card r" style="--i:2"><b>Executive Portal <code>/</code></b><span>POLARIS continuous compliance + SENTRA sensitive-data discovery, AI SOC copilot, executive posture reports and in-browser PDFs. 11-asset inventory.</span></div>
+  <div class="card r" style="--i:3"><b>Master Console <code>/master</code></b><span>VIGIL LangGraph multi-agent SOC: live agent topology, Contract-Net auctions, BDI deliberation, dry-run containment playbooks.</span></div>
+  <div class="card r" style="--i:4"><b>Control Center <code>/control</code></b><span>Hold/resume simulation, inject breaches, reset baseline, isolate assets. Sub-50 ms remediation demo.</span></div>
+ </div>
+</section>
+
+<section class="slide">
+ <div class="kicker r">02 · Architecture</div>
+ <h2 class="r" style="--i:1">Telemetry in, containment out, every step signed.</h2>
+ <div class="flow r" style="--i:2">
+  <div class="node"><b>Fleet Sensors</b><span>workstations &amp; network</span></div><div class="arrow">→</div>
+  <div class="node"><b>Integrity Gate</b><span>anti-poison check</span></div><div class="arrow">→</div>
+  <div class="node"><b>Supervisor Graph</b><span>LangGraph + CNP auction</span></div><div class="arrow">→</div>
+  <div class="node"><b>VIGIL Collective</b><span>Scout, Triage, BDI Analyst</span></div><div class="arrow">→</div>
+  <div class="node"><b>Actuator</b><span>host isolation</span></div>
+ </div>
+ <div class="grid g3" style="margin-top:2.4vh">
+  <div class="card r" style="--i:4"><b>Zero-Trust Gate</b><span>Ed25519 message auth, nonce cache, replay &amp; stale rejection.</span></div>
+  <div class="card r" style="--i:5"><b>Knowledge Enricher</b><span>Ontology + NVD CVE feed, LLM factory (deterministic/fake/remote).</span></div>
+  <div class="card r" style="--i:6"><b>Run Store + Gateway</b><span>SQLite WAL + JSONL → FastAPI/WebSocket → React console.</span></div>
+ </div>
+</section>
+
+<section class="slide">
+ <div class="kicker r">03 · Built — core</div>
+ <h2 class="r" style="--i:1">The agent brain is complete and tested.</h2>
+ <div class="grid g2">
+  <div class="card r" style="--i:2"><span class="tag done">DONE</span><b>Agents</b><span>Scout, Triage, BDI Analyst, Remediator, Reflex agent. BDI beliefs/desires/intentions with reconsideration.</span></div>
+  <div class="card r" style="--i:3"><span class="tag done">DONE</span><b>Coordination</b><span>Contract-Net negotiation, proposal roles and scoring, supervisor + analyst LangGraph state machines.</span></div>
+  <div class="card r" style="--i:4"><span class="tag done">DONE</span><b>Security</b><span>Ed25519 identity &amp; signing, canonicalisation, registry, nonce cache, telemetry integrity checker.</span></div>
+  <div class="card r" style="--i:5"><span class="tag done">DONE</span><b>Optimizer &amp; rules</b><span>Weighted formula engine with brute-force and edge-case tests; rules engine; parser.</span></div>
+ </div>
+</section>
+
+<section class="slide">
+ <div class="kicker r">04 · Built — platform</div>
+ <h2 class="r" style="--i:1">Persistence, streaming and a full console.</h2>
+ <div class="grid g2">
+  <div class="card r" style="--i:2"><span class="tag done">DONE</span><b>Dual-sink persistence</b><span>Append-only JSONL (<code>evt-000001…</code>, gap-free) for replay/audit, plus SQLite tables: events, telemetry, messages, findings, bdi_deliberations, pending_quarantines, llm_calls.</span></div>
+  <div class="card r" style="--i:3"><span class="tag done">DONE</span><b>Gateway &amp; UI</b><span>FastAPI + loopback WebSocket with resync-by-sequence, React SPA, Rich CLI fallback, demo control page.</span></div>
+  <div class="card r" style="--i:4"><span class="tag done">DONE</span><b>Run modes</b><span><code>--live</code>, <code>--demo</code>, <code>--test-human</code>, <code>--eval</code> each writing to its own <code>data/</code> folder.</span></div>
+  <div class="card r" style="--i:5"><span class="tag done">DONE</span><b>Simulation</b><span>Device fleet, human traffic, poisoning attacks, asset types, ground-truth evaluator.</span></div>
+ </div>
+</section>
+
+<section class="slide">
+ <div class="kicker r">05 · What changed recently</div>
+ <h2 class="r" style="--i:1">Four milestones in the git history.</h2>
+ <ul class="l">
+  <li class="r" style="--i:2"><b>721dfdd</b> · Demo Control Center, POLARIS compliance rebuild, SQLite concurrency tuning, README update<small>latest</small></li>
+  <li class="r" style="--i:3"><b>a5267d0</b> · CI fixes: lint, test deps, secret false-positives; dual-product README</li>
+  <li class="r" style="--i:4"><b>d9b8b37</b> · v2.0: VIGIL SOC, SENTRA Data Discovery, POLARIS Compliance</li>
+  <li class="r" style="--i:5"><b>5.1 → 5.2</b> · message authentication, then SQLite/JSONL persistence, WebSocket gateway, Rich dashboard, one-command demo, replay tests</li>
+ </ul>
+</section>
+
+<section class="slide">
+ <div class="kicker r">06 · Proof</div>
+ <h2 class="r" style="--i:1">Numbers from the repository.</h2>
+ <div class="grid g4">
+  <div class="card r" style="--i:2"><div class="big">~85</div><span>Python modules in <code>src/sentryscan</code></span></div>
+  <div class="card r" style="--i:3"><div class="big">~50</div><span>test files (unit + integration)</span></div>
+  <div class="card r" style="--i:4"><div class="big">7</div><span>SQLite tables behind the console</span></div>
+  <div class="card r" style="--i:5"><div class="big">4</div><span>run modes with isolated logs</span></div>
+ </div>
+ <p class="lead r" style="--i:6">Integration tests cover multi-agent coordination, BDI reconsideration, knowledge enrichment, and capstone parity/replay.</p>
+</section>
+
+<section class="slide">
+ <div class="kicker r">07 · Maturity</div>
+ <h2 class="r" style="--i:1">Where each area stands today.</h2>
+ <div class="row r" style="--i:2"><span>Agents/BDI</span><div class="bar"><i style="--w:90%"></i></div><em>90%</em></div>
+ <div class="row r" style="--i:3"><span>Security</span><div class="bar"><i style="--w:85%"></i></div><em>85%</em></div>
+ <div class="row r" style="--i:4"><span>Persistence</span><div class="bar"><i style="--w:85%"></i></div><em>85%</em></div>
+ <div class="row r" style="--i:5"><span>Console UI</span><div class="bar"><i style="--w:75%"></i></div><em>75%</em></div>
+ <div class="row r" style="--i:6"><span>Live data</span><div class="bar"><i style="--w:45%"></i></div><em>45%</em></div>
+ <div class="row r" style="--i:7"><span>Deployment</span><div class="bar"><i style="--w:30%"></i></div><em>30%</em></div>
+ <p class="lead r" style="--i:8" >Estimates by the author of this deck from code and test coverage, not measured metrics.</p>
+</section>
+
+<section class="slide">
+ <div class="kicker r">08 · Still to build</div>
+ <h2 class="r" style="--i:1">From simulation to real environments.</h2>
+ <div class="grid g2">
+  <div class="card r" style="--i:2"><span class="tag todo">NEXT</span><b>Real sensor ingestion</b><span>Replace the fleet simulator with agent/syslog/EDR adapters.</span></div>
+  <div class="card r" style="--i:3"><span class="tag todo">NEXT</span><b>Live containment</b><span>Actuators currently dry-run; add approval workflow and rollback for real isolation.</span></div>
+  <div class="card r" style="--i:4"><span class="tag todo">NEXT</span><b>AuthN/AuthZ for console</b><span>Users, roles, audit of operator actions; key rotation for agent identities.</span></div>
+  <div class="card r" style="--i:5"><span class="tag todo">NEXT</span><b>Packaging &amp; ops</b><span>Docker/compose, config management, retention, metrics export.</span></div>
+ </div>
+</section>
+
+<section class="slide">
+ <div class="kicker r">09 · To refine</div>
+ <h2 class="r" style="--i:1">Quality work on what already exists.</h2>
+ <div class="grid g2">
+  <div class="card r" style="--i:2"><span class="tag fix">REFINE</span><b>Large modules</b><span><code>store.py</code> (41 KB) and <code>server.py</code> (49 KB) should be split by concern.</span></div>
+  <div class="card r" style="--i:3"><span class="tag fix">REFINE</span><b>Evaluation depth</b><span>Broaden ground-truth scenarios; report precision/recall per attack type.</span></div>
+  <div class="card r" style="--i:4"><span class="tag fix">REFINE</span><b>LLM reliability</b><span>Timeouts, retries, cost tracking from <code>llm_calls</code>, prompt regression tests.</span></div>
+  <div class="card r" style="--i:5"><span class="tag fix">REFINE</span><b>UI polish</b><span>Accessibility, empty/error states, responsive layouts, load tests for WebSocket.</span></div>
+ </div>
+</section>
+
+<section class="slide">
+ <div class="kicker r">10 · Roadmap</div>
+ <h2 class="r" style="--i:1">Suggested order of work.</h2>
+ <div class="flow">
+  <div class="node r" style="--i:2"><b>1 · Harden</b><span>Split big modules, console auth, CI gates</span></div><div class="arrow">→</div>
+  <div class="node r" style="--i:3"><b>2 · Connect</b><span>Real sensor adapters, NVD live cache</span></div><div class="arrow">→</div>
+  <div class="node r" style="--i:4"><b>3 · Act</b><span>Approved live containment with rollback</span></div><div class="arrow">→</div>
+  <div class="node r" style="--i:5"><b>4 · Ship</b><span>Containers, docs, benchmark report</span></div>
+ </div>
+ <p class="lead r" style="--i:7">Roadmap items are proposals for discussion. Full detail in the accompanying PDF.</p>
+</section>
+
+<div id="prog"></div>
+<div id="hud"><span id="n">1/10</span><button id="p">←</button><button id="x">→</button></div>
+<script>
+const S=[...document.querySelectorAll('.slide')];let i=0;
+function go(n){i=Math.max(0,Math.min(S.length-1,n));S.forEach((s,k)=>s.classList.toggle('active',k===i));
+ n_.textContent=(i+1)+'/'+S.length;prog.style.width=((i+1)/S.length*100)+'%'}
+const n_=document.getElementById('n'),prog=document.getElementById('prog');
+addEventListener('keydown',e=>{if(['ArrowRight','PageDown',' '].includes(e.key)){e.preventDefault();go(i+1)}if(['ArrowLeft','PageUp'].includes(e.key))go(i-1);if(e.key==='Home')go(0);if(e.key==='End')go(S.length-1)});
+document.getElementById('x').onclick=()=>go(i+1);document.getElementById('p').onclick=()=>go(i-1);
+let sx;addEventListener('touchstart',e=>sx=e.touches[0].clientX);addEventListener('touchend',e=>{const d=e.changedTouches[0].clientX-sx;if(Math.abs(d)>50)go(i+(d<0?1:-1))});
+go(0);
+</script></body></html>

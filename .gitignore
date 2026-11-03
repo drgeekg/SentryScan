@@ -74,3 +74,6 @@ Desktop.ini
 
 # Tool generated
 graphify-out/
+
+.archify/
+.archify-repo/
