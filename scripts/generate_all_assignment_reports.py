@@ -1,10 +1,8 @@
 #!/usr/bin/env python3
 """Generate standardized deliverable Markdown and PDF reports for all assignments."""
 
-import os
 import re
 import subprocess
-import sys
 from pathlib import Path
 
 import markdown

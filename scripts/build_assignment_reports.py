@@ -13,9 +13,7 @@ Each report adheres to the unified specification format:
 from __future__ import annotations
 
 import re
-import shutil
 import subprocess
-import sys
 from pathlib import Path
 
 import markdown
